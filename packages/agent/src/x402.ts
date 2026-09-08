@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+// using spawn from child_process now
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Receipt } from "@custodia/schema";
@@ -66,7 +66,10 @@ const PaymentResponseSchema = z.object({
 });
 type PaymentResponse = z.infer<typeof PaymentResponseSchema>;
 
-/** Serial execution of signing tasks — one key, no mempool, no nonce gaps. */
+import { spawn } from "node:child_process";
+import * as readline from "node:readline";
+
+/** Serial execution of IPC to match the signer's internal queue strictly. */
 class Mutex {
   private tail: Promise<unknown> = Promise.resolve();
 
@@ -82,17 +85,26 @@ class Mutex {
 
 const signerMutex = new Mutex();
 
-const runSigner = (challenge: string): string => {
-  try {
-    return execFileSync(SIGNER_RUNNER, [SIGNER_PATH], {
-      input: challenge,
-      encoding: "utf8",
+let signerProcess: ReturnType<typeof spawn> | null = null;
+let signerRl: readline.Interface | null = null;
+
+const runSigner = (challenge: string): Promise<string> => {
+  if (!signerProcess || signerProcess.killed) {
+    signerProcess = spawn(SIGNER_RUNNER, [SIGNER_PATH], {
       cwd: dirname(SIGNER_PATH),
-    }).trim();
-  } catch (err) {
-    const detail = (err as { stderr?: string }).stderr?.trim();
-    throw new PaymentError(`signer failed: ${detail || (err as Error).message}`);
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    signerRl = readline.createInterface({ input: signerProcess.stdout! });
+    signerProcess.stderr!.on("data", (data) => console.error(`Signer: ${data}`));
   }
+
+  return new Promise((resolve, reject) => {
+    signerRl!.once("line", (line) => {
+      if (line === "ERROR") reject(new PaymentError("signer failed inside queue"));
+      else resolve(line.trim());
+    });
+    signerProcess!.stdin!.write(challenge + "\n");
+  });
 };
 
 export interface PaidFetchResult<T> {
