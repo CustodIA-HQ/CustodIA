@@ -1,0 +1,35 @@
+{
+  "name": "custodia",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.22.0",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "test:coverage": "pnpm --filter @custodia/policy test:coverage",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "dev": "concurrently -n risk-api,web -c blue,green \"pnpm --filter @custodia/risk-api dev\" \"pnpm --filter @custodia/web dev\"",
+    "db:generate": "pnpm --filter @custodia/db db:generate",
+    "db:migrate": "pnpm --filter @custodia/db db:migrate",
+    "verify:ens": "tsx scripts/verify-ens.ts",
+    "verify:x402": "tsx scripts/verify-x402.ts",
+    "verify:graph": "tsx scripts/verify-graph.ts",
+    "agent:cli": "tsx scripts/agent-cli.ts"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.0.0",
+    "@types/node": "^24.0.0",
+    "concurrently": "^9.1.0",
+    "dotenv": "^17.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}

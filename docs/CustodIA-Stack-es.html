@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>CustodIA — Stack técnico y justificación</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm 20mm 16mm; }
+  :root {
+    --ink: #17202a; --muted: #5b6774; --line: #d9dee4; --soft: #f3f5f7;
+    --accent: #0f5fa8; --accent-soft: #e8f1fb; --ok: #1a7f4b; --ok-soft: #e6f4ec;
+    --warn: #9a5b00; --warn-soft: #fff4e0; --bad: #a12626; --bad-soft: #fbe9e9;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: "Noto Sans", "Liberation Sans", Arial, sans-serif; color: var(--ink); font-size: 10.4pt; line-height: 1.45; }
+  code, pre { font-family: "Liberation Mono", "DejaVu Sans Mono", Menlo, monospace; }
+  code { font-size: 9.2pt; background: var(--soft); padding: 0 3px; border-radius: 3px; }
+  pre { font-size: 8.2pt; line-height: 1.35; page-break-inside: avoid; white-space: pre-wrap; word-break: break-word; background: var(--soft); border: 1px solid var(--line); border-radius: 5px; padding: 9px 11px; overflow: hidden; }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  h1 { font-size: 24pt; margin: 0 0 4px; letter-spacing: -0.3px; }
+  h2 { font-size: 15pt; margin: 0 0 8px; padding-bottom: 5px; border-bottom: 2px solid var(--ink); page-break-after: avoid; }
+  h3 { font-size: 11.5pt; margin: 14px 0 5px; color: var(--accent); page-break-after: avoid; }
+  p { margin: 0 0 8px; }
+  ul { margin: 0 0 8px 18px; padding: 0; } li { margin-bottom: 3px; }
+  section { page-break-before: always; }
+  section.first { page-break-before: auto; }
+  .cover { padding-top: 40mm; }
+  .cover .kicker { text-transform: uppercase; letter-spacing: 1.6px; font-size: 9pt; color: var(--accent); font-weight: 700; margin-bottom: 10px; }
+  .cover .sub { font-size: 13pt; color: var(--muted); margin: 6px 0 24px; }
+  .cover .meta { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 10px 0; font-size: 9.6pt; color: var(--muted); }
+  .cover .meta b { color: var(--ink); }
+  .thesis { background: var(--accent-soft); border-left: 4px solid var(--accent); padding: 10px 14px; margin: 18px 0; border-radius: 0 5px 5px 0; }
+  .thesis .t { font-weight: 700; color: var(--accent); font-size: 9pt; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 3px; }
+  .thesis .q { font-size: 12.5pt; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; margin: 6px 0 12px; page-break-inside: auto; }
+  tr { page-break-inside: avoid; }
+  th, td { text-align: left; vertical-align: top; padding: 6px 8px; border-bottom: 1px solid var(--line); font-size: 9.6pt; }
+  th { background: var(--soft); font-size: 8.8pt; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); }
+  td.k { width: 26%; font-weight: 600; }
+  .callout { border: 1px solid var(--line); border-left-width: 4px; border-radius: 0 5px 5px 0; padding: 8px 12px; margin: 10px 0; page-break-inside: avoid; }
+  .callout .t { font-size: 8.6pt; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 3px; }
+  .why { border-left-color: var(--accent); background: var(--accent-soft); } .why .t { color: var(--accent); }
+  .ok { border-left-color: var(--ok); background: var(--ok-soft); } .ok .t { color: var(--ok); }
+  .warn { border-left-color: var(--warn); background: var(--warn-soft); } .warn .t { color: var(--warn); }
+  .bad { border-left-color: var(--bad); background: var(--bad-soft); } .bad .t { color: var(--bad); }
+  .pill { display: inline-block; font-size: 8pt; font-weight: 700; padding: 1px 7px; border-radius: 10px; background: var(--soft); color: var(--muted); margin-left: 4px; vertical-align: middle; }
+  .pill.ok { background: var(--ok-soft); color: var(--ok); border: none; }
+  .pill.bad { background: var(--bad-soft); color: var(--bad); border: none; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .small { font-size: 9pt; color: var(--muted); }
+  .toc li { margin-bottom: 4px; }
+  .toc .n { display: inline-block; width: 22px; color: var(--accent); font-weight: 700; }
+</style>
+</head>
+<body>
+
+<!-- ============================ PORTADA ============================ -->
+<section class="first cover">
+  <div class="kicker">ETHOnline 2026 · Hackathon · Documento interno del equipo</div>
+  <h1>CustodIA</h1>
+  <div class="sub">Stack técnico y justificación de cada decisión</div>
+  <p style="font-size:11pt; max-width: 150mm;">Un runtime conversacional que convierte una intención financiera vaga en un <b>mandato acotado, revocable y ejecutable por máquina</b>. El agente investiga con datos en vivo de <b>The Graph</b>, paga por inteligencia de riesgo mediante <b>x402 en Hedera</b>, genera la interfaz mínima para que el humano fije límites, y guarda cada tarea como un subnombre <b>ENSv2</b> cuyo dueño es la wallet del usuario.</p>
+
+  <div class="thesis">
+    <div class="t">Principio rector</div>
+    <div class="q">El agente propone. El humano autoriza el límite. El motor de políticas lo hace cumplir.</div>
+  </div>
+
+  <div class="meta">
+    <b>Tracks:</b> ENS — Best Use of ENSv2 · The Graph — AI Tooling / AI Use Case · Hedera — AI &amp; Agentic Payments<br>
+    <b>Ventana de build:</b> 4–16 de septiembre de 2026 &nbsp;·&nbsp; <b>Estado al redactar:</b> 7–8 sept, repositorio sin commits<br>
+    <b>Documentos relacionados:</b> <code>README.md</code> · <code>QUICKREF.md</code> (constantes verificadas) · <code>TEAM.md</code> · <code>TRACKS.md</code>
+  </div>
+
+  <h3 style="margin-top:22px;">Contenido</h3>
+  <ul class="toc" style="list-style:none; margin-left:0;">
+    <li><span class="n">1</span> Resumen ejecutivo y los dos filtros que decidieron todo</li>
+    <li><span class="n">2</span> Arquitectura general y flujo de datos</li>
+    <li><span class="n">3</span> Plataforma base (runtime, monorepo, web, API, tests, CI)</li>
+    <li><span class="n">4</span> Runtime del agente (Claude) y UX generativa</li>
+    <li><span class="n">5</span> Web3 e identidad: ENSv2 en Sepolia</li>
+    <li><span class="n">6</span> Hedera: el riel de pagos x402</li>
+    <li><span class="n">7</span> The Graph: inteligencia en vivo</li>
+    <li><span class="n">8</span> Base de datos: por qué sí la necesitamos</li>
+    <li><span class="n">9</span> Canales: web primero, Telegram como puerta de entrada</li>
+    <li><span class="n">10</span> Lo que descartamos, y por qué</li>
+    <li><span class="n">11</span> Verificado en vivo (no sacado de la documentación)</li>
+    <li><span class="n">12</span> Riesgos aceptados y bloqueadores inmediatos</li>
+    <li><span class="n">A</span> Anexo: versiones exactas</li>
+  </ul>
+</section>
+
+<!-- ============================ 1 ============================ -->
+<section>
+  <h2>1. Resumen ejecutivo</h2>
+  <p><b>Qué construimos.</b> No es "un bot de trading con IA". Es infraestructura para operaciones financieras autónomas <i>seguras</i>: el usuario escribe en un chat lo que quiere ("mantén mi exposición ETH/USDC dentro de estos límites"), el agente investiga el mercado con datos on-chain en vivo, compra contexto de riesgo a un servicio pagado por llamada, y <b>genera la interfaz exacta</b> que el humano necesita para fijar los límites (gráfico, selector de asignación, drawdown máximo, tamaño máximo por operación, permiso de rebalanceo). Cuando la wallet firma, esas elecciones se convierten en un mandato: el agente opera dentro de él de forma autónoma, pero <b>no puede ampliar su propia autoridad</b>.</p>
+
+  <p><b>Por qué cada sponsor es estructural, no decorativo.</b> Los jueces aplican una prueba simple: <i>"¿se cae el proyecto si quitamos este producto?"</i>. La respuesta tiene que ser sí en los tres casos:</p>
+  <table>
+    <tr><th>Sponsor</th><th>Rol en el producto</th><th>Si lo quitamos…</th></tr>
+    <tr><td class="k">ENSv2</td><td>Cada tarea persistente es un subnombre cuyo dueño es la wallet del usuario; el agente solo recibe roles acotados (EAC) sobre ese nombre.</td><td>No hay identidad de tarea, ni propiedad, ni delegación revocable. El producto no existe.</td></tr>
+    <tr><td class="k">The Graph</td><td>Fuente en vivo del estado del mercado. Los <i>rangos permitidos</i> de la UI generada se derivan de la volatilidad real.</td><td>La interfaz se vuelve estática; el agente no puede razonar ni reaccionar.</td></tr>
+    <tr><td class="k">Hedera (x402)</td><td>El agente paga en HBAR por el análisis de riesgo que acota el mandato.</td><td>El agente no puede poner límites informados al mandato.</td></tr>
+  </table>
+
+  <h3>Los dos filtros que decidieron el stack</h3>
+  <div class="callout why"><div class="t">Filtro 1 — Separar inteligencia de autoridad</div>
+  Cualquier pieza que mezcle "lo que el agente quiere hacer" con "lo que el agente tiene permitido hacer" fue rechazada, aunque fuera más rápida. Por eso el agente emite una <i>especificación tipada</i> de UI y nunca código; por eso la clave de Hedera vive en un proceso separado; por eso el motor de políticas es TypeScript determinista y no un LLM.</div>
+  <div class="callout warn"><div class="t">Filtro 2 — Quedan 9 días, no 12</div>
+  Al redactar esto (7–8 sept) el repositorio tiene <b>cero commits</b>, y el plan original ya tenía ENSv2 funcionando el 6 de sept. Cada elección favorece lo <i>conocido y verificado</i> sobre lo elegante. El historial de commits limpio e incremental es un criterio de evaluación: hay que empezar a commitear hoy, pequeño y seguido.</div>
+</section>
+
+<!-- ============================ 2 ============================ -->
+<section>
+  <h2>2. Arquitectura general y flujo de datos</h2>
+  <p>Un monorepo <code>pnpm</code> con dos aplicaciones desplegables y cinco paquetes internos. Los paquetes reflejan la división de responsabilidades de <code>TEAM.md</code>: cada persona es dueña de uno, y todos construyen contra el contrato congelado en <code>packages/schema</code> desde el día 1.</p>
+<pre><code>packages/schema    Zod: UISpec · Mandate · TaskContext · Policy     ← contrato congelado día 1
+packages/graph     adaptadores tipados de subgraphs (Uniswap V3, Aave v3, Agent0)
+packages/policy    motor de políticas determinista: permitir / denegar + razón
+packages/ens       ENSv2: createTask · delegateAgent · revokeAgent · resolveTask
+packages/agent     runtime del agente (Claude, tool-calling) → emite UISpec
+
+apps/web           Next.js: chat · renderizador de UISpec · página de tarea
+                   · vista de auditoría · webhook de Telegram
+apps/risk-api      Risk Context API con puerta x402 (Hono + Blocky402, Hedera testnet)
+apps/signer        firmante delegado: la clave Hedera vive SOLO aquí (proceso aparte)</code></pre>
+
+  <h3>El flujo de punta a punta</h3>
+<pre><code>  chat (web / Telegram)
+    │
+    ▼
+  agente investiga  ──▶  The Graph (gateway gratuito, datos en vivo)
+    │
+    ▼
+  llama a /risk/portfolio  ──▶  HTTP 402 (precio en HBAR)
+    │
+    ├─▶  motor de políticas: ¿gasto dentro del límite?  ──▶  NO → rechazo visible
+    │
+    ▼  SÍ
+  firmante delegado firma ──▶ Blocky402 liquida en Hedera ──▶ JSON de riesgo
+    │
+    ▼
+  agente emite UISpec (validada con Zod contra un registro de componentes permitidos)
+    │
+    ▼
+  el humano ajusta dentro de los rangos permitidos y FIRMA el mandato (EIP-712)
+    │
+    ▼
+  se acuña el subnombre ENSv2 de la tarea (dueño = wallet del usuario)
+  se escribe el hash del mandato en un text record (solo el dueño puede)
+  se delega al agente un rol acotado: solo puede escribir la clave "status"
+    │
+    ▼
+  watcher: re-consulta The Graph cada N segundos → política → acción permitida
+           o cambio a NEEDS_HUMAN, o acción denegada (mostrada en auditoría)</code></pre>
+
+  <div class="callout ok"><div class="t">El momento clave de la demo</div>
+  Revocar el rol del agente en la tarea <code>a82f</code> → su siguiente escritura revierte con <code>EACUnauthorizedAccountRoles</code> → la tarea hermana <code>91ac</code> sigue actualizándose normalmente. Delegación acotada por recurso, en vivo, verificable en Sepolia.</div>
+</section>
+
+<!-- ============================ 3 ============================ -->
+<section>
+  <h2>3. Plataforma base</h2>
+  <table>
+    <tr><th>Capa</th><th>Elección</th><th>Por qué</th></tr>
+    <tr><td class="k">Runtime</td><td>Node 22 LTS · TypeScript 5.7</td><td>Aburrido a propósito. Sin sorpresas.</td></tr>
+    <tr><td class="k">Monorepo</td><td><b>pnpm workspaces</b>, sin Turborepo</td><td>Cinco personas necesitan fronteras de paquete que coincidan con la propiedad de <code>TEAM.md</code>. Turborepo añade configuración sin beneficio a este tamaño.</td></tr>
+    <tr><td class="k">Aplicación web</td><td><b>Next.js 15</b> (App Router) · React 19</td><td>Chat, renderizador de UI generada, página de tarea, vista de auditoría y webhook de Telegram en un solo despliegue.</td></tr>
+    <tr><td class="k">Risk API</td><td><b>Hono</b> sobre Node, como <b>segundo proyecto de Vercel</b> desde el mismo repo</td><td>Los jueces pueden hacer <code>curl</code> al servicio de forma independiente; la narrativa "el agente paga a un servicio externo" se mantiene honesta. Ser Hono significa que portarlo a Railway son 20 minutos si los timeouts serverless molestan.</td></tr>
+    <tr><td class="k">Validación</td><td><b>Zod</b></td><td><code>packages/schema</code> es el contrato contra el que todos hacen stubs el día 1. Un componente desconocido o un rango fuera de política es un <i>error de validación</i>, no un fallback.</td></tr>
+    <tr><td class="k">Base de datos</td><td><b>Neon Postgres + Drizzle</b> (6 tablas)</td><td>Ver sección 8. La afirmación central del producto es una tarea <i>persistente</i>; el mandato tiene que vivir fuera de la cadena porque ENS es público.</td></tr>
+    <tr><td class="k">UI</td><td>Tailwind v4 + <b>shadcn/ui</b></td><td>Los gráficos vienen gratis con el wrapper de Recharts de shadcn.</td></tr>
+    <tr><td class="k">Lint / formato</td><td><b>Biome</b></td><td>Una herramienta, cero día de configuración de ESLint + Prettier.</td></tr>
+    <tr><td class="k">Tests</td><td><b>Vitest</b> + scripts <code>pnpm verify:{ens,x402,graph}</code></td><td>Los scripts de verificación en vivo cumplen tres funciones: smoke tests nuestros, jobs de CI, y <b>lo que el README señala a los jueces</b>. "Clona, configura el env, corre tres comandos y mira cómo funciona" vale más que un video.</td></tr>
+    <tr><td class="k">CI / CD</td><td>GitHub Actions (typecheck + test) → preview de Vercel por PR</td><td>Hace que el historial de commits parezca ingeniería, y eso se evalúa.</td></tr>
+  </table>
+
+  <h3>Los tres scripts de verificación</h3>
+<pre><code>pnpm verify:ens     acuñar → delegar → escribir → REVOCAR → probar que la escritura ahora revierte
+pnpm verify:x402    402 → liquidación en Blocky402 → fila en el mirror node bajo feePayer 0.0.7162784
+pnpm verify:graph   _meta{block{number}} en cada ID de subgraph + una consulta real</code></pre>
+  <p class="small">Estos scripts son la prueba reproducible que exige cada track ("sin datos simulados", "una petición pagada real de punta a punta"). También fallan el CI si un subgraph deja de indexar.</p>
+</section>
+
+<!-- ============================ 4 ============================ -->
+<section>
+  <h2>4. Runtime del agente (Claude) y UX generativa</h2>
+  <table>
+    <tr><th>Elección</th><th>Por qué</th></tr>
+    <tr><td class="k"><b>SDK oficial de Anthropic</b> (<code>@anthropic-ai/sdk</code>), directo. <i>No</i> Vercel AI SDK ni LangGraph.</td><td>Nos desviamos del reporte original. Tres razones específicas de este producto: (1) la UISpec es una <b>frontera de seguridad</b> y necesita <code>strict: true</code> / salidas estructuradas, que las capas de abstracción multi-proveedor aplanan; (2) la <i>justificación</i> del agente es un artefacto evaluado por el track de The Graph, y sale del razonamiento adaptativo + <code>effort</code>, que son específicos de Claude; (3) el <code>toolRunner</code> del SDK ya <i>es</i> el bucle del agente, con hooks por turno: exactamente donde el motor de políticas veta una llamada a herramienta antes de ejecutarla.</td></tr>
+    <tr><td class="k"><b><code>claude-opus-5</code></b>, <code>thinking: {type: "adaptive"}</code>, <code>effort: "high"</code></td><td>Sin <code>budget_tokens</code> (devuelve 400 en Opus 5). Una demo de 4 minutos cuesta centavos; el costo no es una restricción.</td></tr>
+    <tr><td class="k"><code>betaZodTool</code> + <code>toolRunner</code></td><td>Herramientas: <code>graph.getMarketContext</code>, <code>risk.paidRequest</code>, <code>task.create</code>, <code>task.setStatus</code>, <code>ui.emit</code>.</td></tr>
+    <tr><td class="k">Fallbacks de rechazo del lado del servidor, activados por defecto</td><td><code>betas: ["server-side-fallback-2026-07-01"]</code>, <code>fallbacks: "default"</code>. Evita que un rechazo del clasificador de seguridad tumbe la demo.</td></tr>
+    <tr><td class="k">Streaming al navegador con un hook SSE de ~60 líneas</td><td>Es lo que perdemos al no usar <code>useChat</code>. Es un hook, no un framework.</td></tr>
+  </table>
+
+  <h3>La regla de la UX generativa</h3>
+  <p>El agente <b>nunca emite HTML, React ni JavaScript</b>. Emite una especificación JSON tipada (<code>UISpec</code>) que referencia un registro de componentes permitidos. El frontend de confianza decide cómo se renderiza cada componente, qué valores se aceptan y qué advertencias son obligatorias.</p>
+<pre><code>UISpec    = { intent, components: Component[], rationale: string }
+Component = price_chart | allocation_selector | range_slider | amount_selector
+          | permission_toggle | risk_summary | escalation_panel
+
+// el min/max de cada control numérico se recorta en el servidor contra el objeto de política
+// mandate_signer es propiedad de la plataforma y SIEMPRE se añade — el agente no puede omitirlo</code></pre>
+  <div class="callout why"><div class="t">Patrón seguro</div>
+  El agente decide <b>qué</b> contexto necesita. La plataforma controla <b>cómo</b> se presenta y <b>qué</b> puede autorizar realmente el usuario. Un nombre de componente desconocido o un rango fuera de política es un fallo de validación duro, nunca un fallback silencioso.</div>
+</section>
+
+<!-- ============================ 5 ============================ -->
+<section>
+  <h2>5. Web3 e identidad: ENSv2 en Sepolia</h2>
+  <table>
+    <tr><th>Elección</th><th>Por qué</th></tr>
+    <tr><td class="k"><b>viem ≥ 2.35</b></td><td>Las escrituras en ENSv2 necesitan ABIs hechos a mano (ver <code>QUICKREF.md</code>); <code>encodeFunctionData</code> de viem es el camino más limpio.</td></tr>
+    <tr><td class="k"><b>wagmi v2 + RainbowKit</b>, solo Sepolia</td><td>La UI de wallet más rápida de montar y que los jueces reconocen.</td></tr>
+    <tr><td class="k"><b><code>siwe</code> v3</b> → JWT (<code>jose</code>) en cookie httpOnly</td><td>Hecho a mano gana a NextAuth aquí; los jueces leen este código.</td></tr>
+    <tr><td class="k"><b>EIP-712 <code>signTypedData</code></b> para el mandato</td><td>Produce un hash de struct real para escribir en ENS. Un <code>personal_sign</code> no lo daría.</td></tr>
+  </table>
+
+  <h3>Modelo de nombres</h3>
+<pre><code>custodia.eth                       ← lo registramos una vez en Sepolia (ENSv2, MockUSDC)
+  rob.custodia.eth                 ← subnombre ACUÑADO, dueño = wallet del USUARIO
+    a82f.rob.custodia.eth          ← espacio de nombres de una tarea, dueño = usuario
+    91ac.rob.custodia.eth          ← otra tarea, permisos y ciclo de vida independientes
+  atlas.agents.custodia.eth        ← identidad del agente, SIN acuñar (gratis, un setText)</code></pre>
+  <p>Etiquetas de tarea opacas (aleatorias) para que los registros públicos no filtren la intención financiera. Según <code>QUICKREF.md</code>, un nombre sin acuñar resuelve a través del resolver del padre, así que los agentes son gratis; solo los espacios de usuario y de tarea cuestan una escritura en el registro.</p>
+
+  <h3>Qué va en ENS (público) y qué no</h3>
+  <table>
+    <tr><th>Clave</th><th>Quién puede escribir</th><th>Contenido</th></tr>
+    <tr><td class="k"><code>xyz.custodia.status</code></td><td><b>el agente</b> (rol <code>ROLE_SET_TEXT</code> acotado a esta clave vía <code>authorizeTextRoles</code>)</td><td><code>active</code> / <code>needs-human</code> / <code>completed</code></td></tr>
+    <tr><td class="k"><code>xyz.custodia.mandate</code></td><td><b>solo el dueño</b></td><td>keccak256 del mandato firmado — <i>nunca</i> los límites en sí</td></tr>
+    <tr><td class="k"><code>agent-registration[…]</code></td><td>el dueño</td><td>Atestación ENSIP-25 hacia la entrada ERC-8004</td></tr>
+  </table>
+  <div class="callout bad"><div class="t">Regla de privacidad</div>
+  Los registros ENS son públicos. Nunca guardar saldos, límites de pérdida detallados, secretos ni estrategia en texto plano. Solo hashes, punteros y estado grueso. Todo lo privado va detrás del backend autenticado con wallet (sección 8).</div>
+  <div class="callout warn"><div class="t">Trampas conocidas (QUICKREF #5)</div>
+  <code>authorize*</code> recibe un nombre <b>DNS-encoded</b>; los setters reciben un <b>namehash</b>. Mezclarlos produce reverts confusos. Los token IDs son mutables; nunca usar <code>setApprovalForAll</code> (delegación total); el bloqueo es irreversible.</div>
+</section>
+
+<!-- ============================ 6 ============================ -->
+<section>
+  <h2>6. Hedera: el riel de pagos x402</h2>
+  <table>
+    <tr><th>Elección</th><th>Por qué</th></tr>
+    <tr><td class="k"><b><code>@x402/core</code> + <code>@x402/hedera</code> + <code>@x402/hono</code>, todos fijados en <code>2.25.0</code> exacto</b></td><td><code>@x402/hedera</code> existe y es oficial de x402-foundation (habíamos asumido que tendríamos que firmar la <code>TransferTransaction</code> a mano — no hace falta). Fija <code>@x402/core ~2.25.0</code>, así que todo el conjunto <code>@x402/*</code> debe moverse en bloque. Respaldo conocido: <code>2.16.0</code> (la versión del workshop oficial).</td></tr>
+    <tr><td class="k"><b><code>@hiero-ledger/sdk</code> ^2.87</b></td><td><i>No</i> <code>@hashgraph/sdk</code>: el renombre es la trampa #7 y hiero va 6 versiones menores por delante. Todo snippet anterior a 2026 está mal en algo.</td></tr>
+    <tr><td class="k"><b>Facilitador Blocky402 testnet</b> <code>api.testnet.blocky402.com</code>, sin API key</td><td>Requisito duro del track. <b>Verificado en vivo:</b> <code>x402Version 2</code>, red <code>hedera:testnet</code>, <code>feePayer 0.0.7162784</code>. El starter oficial de Hedera apunta a <code>x402.org/facilitator</code> y <i>falla el track</i> (trampa #1).</td></tr>
+    <tr><td class="k"><b>Firmante delegado en subproceso</b> (patrón del workshop)</td><td>La clave privada de Hedera <b>nunca entra en la ventana de contexto del LLM</b>. Con un bucle de herramientas de Opus leyendo datos de subgraphs, una inyección de prompt en el mismo proceso = clave robada. Una frontera de proceso (stdin → firma → stdout) lo hace estructuralmente imposible. Y es una frase de 30 segundos para un juez que lee código.</td></tr>
+    <tr><td class="k"><b>Precio en HBAR</b> (asset <code>0.0.0</code>, tinybars), no USDC</td><td>Evita por completo la asociación de tokens HTS.</td></tr>
+    <tr><td class="k">Campos numéricos estructurados; el LLM solo escribe la explicación</td><td>El motor de políticas y la UI consumen los números. Un LLM nunca decide una cifra.</td></tr>
+    <tr><td class="k">Topic HCS de auditoría <span class="pill">stretch</span> con <code>submitKey</code>, sin custom fees</td><td>$0.0008 por mensaje. Sin <code>submitKey</code>, cualquiera puede escribir en nuestro "registro de auditoría". Con custom fees, crear el topic cuesta $2.00.</td></tr>
+  </table>
+
+  <h3>El protocolo x402 v2 en el cable: tres cabeceras, no una</h3>
+<pre><code>GET /risk/portfolio                      → 402 + payment-required
+                                           (la etiqueta de precio, JSON en base64)
+
+GET /risk/portfolio + payment-signature  → 200 + payment-response
+                                           ({success, transaction, payer, network})</code></pre>
+  <p>Las tres son JSON en base64. Un <b>segundo 402 se explica a sí mismo</b> en su cabecera <code>payment-required</code>: hay que decodificarla, o una caída del facilitador aparece como un bucle de reintentos silencioso. Los tutoriales v1 usan <code>X-PAYMENT</code>; eso falla en silencio (trampa #2).</p>
+
+  <h3>Cliente — API exacta, extraída del firmante de referencia</h3>
+<pre><code>import { createClientHederaSigner, PrivateKey } from "@x402/hedera";
+import { ExactHederaScheme } from "@x402/hedera/exact/client";
+import { x402Client } from "@x402/core/client";
+import { decodePaymentRequiredHeader, encodePaymentSignatureHeader } from "@x402/core/http";
+
+const signer = createClientHederaSigner(
+  accountId,                          // 0.0.xxxxx
+  PrivateKey.fromStringECDSA(key),    // claves del Portal: ECDSA; ED25519 → fromStringED25519
+  { network: "hedera:testnet" },
+);
+const client = new x402Client().register("hedera:*", new ExactHederaScheme(signer));
+const payload = await client.createPaymentPayload(decodePaymentRequiredHeader(challenge));</code></pre>
+  <p>El SDK construye la <code>TransferTransaction</code>, la firma y <b>deja vacío el slot del fee payer</b>: un cheque firmado sin franqueo. El facilitador se añade como pagador de la tarifa y lo envía, pero no puede cambiar ni el monto ni el destino porque nuestra firma ya los fijó. Por eso el agente casi no necesita HBAR.</p>
+
+  <div class="callout warn"><div class="t">Trampas de Hedera que diseñamos alrededor</div>
+  <ul style="margin-bottom:0">
+    <li><b>El mirror node tarda 5–6 s</b> en reflejar una escritura. Esperar 6000 ms antes de consultar, o se concluye que un pago exitoso falló.</li>
+    <li><b>Sin mempool; los huecos de nonce se rechazan.</b> Nunca <code>Promise.all</code> con transacciones del mismo firmante. Nuestro agente lanza llamadas concurrentes por defecto: la herramienta de Hedera debe serializar.</li>
+    <li><b>Faucet: <code>portal.hedera.com</code> con email.</b> El faucet anónimo crea una cuenta "hueca" que recibe pero <i>no puede enviar</i> (trampa #6). Cuesta una tarde entera.</li>
+    <li>El límite de gasto es política del agente, no del firmante. El firmante firma lo que le pasan; <code>packages/policy</code> decide <i>si se le pasa algo</i>. Un trabajo cada uno.</li>
+  </ul></div>
+</section>
+
+<!-- ============================ 7 ============================ -->
+<section>
+  <h2>7. The Graph: inteligencia en vivo</h2>
+  <table>
+    <tr><th>Elección</th><th>Por qué</th></tr>
+    <tr><td class="k"><b><code>graphql-request</code> + respuestas validadas con Zod</b>, ~80 líneas</td><td><i>No</i> <code>@graphprotocol/client-x402</code>: la URL de testnet de la documentación oficial no tiene DNS (trampa #3, <b>confirmada hoy</b>), y el cliente valida el campo <code>chain</code> pero nunca lo aplica, así que <code>base-sepolia</code> gasta <b>USDC real de mainnet</b> (trampa #4). <i>No</i> graphclient: sus exports ESM están rotos. Zod en la frontera significa que un cambio de esquema es un error de parseo, no un <code>undefined</code> dentro de un cálculo de riesgo.</td></tr>
+    <tr><td class="k"><b>Gateway gratuito</b> con Studio key, 100K consultas/mes</td><td>Es un proveedor en vivo que califica para el track. Sin dinero real en el camino crítico. El gateway x402 en Base está vivo (devolvió un 402 limpio hoy) pero queda como escena bonus opcional.</td></tr>
+    <tr><td class="k"><b>IDs de subgraph hardcodeados</b></td><td>La búsqueda del MCP es por subcadena en el nombre visible, no semántica: "DEX on Base" no devuelve nada. Uniswap V3 ETH (primario), Aave v3 ETH (plantilla 2), Agent0 Sepolia (descubrimiento).</td></tr>
+    <tr><td class="k"><code>verify:graph</code> comprueba <code>_meta{block{number}}</code> en cada ID</td><td>El repo de Messari lleva 17 meses sin actualizar; Balancer v2 ya devuelve <code>indexing_error</code>. Ese es el fallo contra el que nos protegemos.</td></tr>
+    <tr><td class="k"><b>Caché en Postgres, escrita el día 1</b></td><td>No hay batching de pagos (issue #1031 abierto) y el watcher consulta en bucle. Es arquitectura, no optimización posterior.</td></tr>
+    <tr><td class="k"><b>Uniswap V3 para la tarea primaria</b>, no Aave</td><td>Los precios se mueven cada bloque, así que "los datos en vivo provocaron una reacción" es reproducible a demanda mientras grabamos. Un health factor puede quedarse quieto 4 minutos.</td></tr>
+  </table>
+
+  <h3>Subgraphs en uso</h3>
+  <table>
+    <tr><th>Propósito</th><th>Subgraph</th><th>ID</th></tr>
+    <tr><td class="k">Precio / liquidez / swaps en vivo</td><td>Uniswap V3 Ethereum</td><td><code>4cKy6QQMc5tpfdx8yxfYeb9TLZmgLQe44ddW1G7NwkA6</code></td></tr>
+    <tr><td class="k">Colateral / health factor (plantilla 2)</td><td>Aave v3 Ethereum</td><td><code>JCNWRypm7FYwV8fx5HhzZPSFaMxgkPuw4TnR3Gpi81zk</code></td></tr>
+    <tr><td class="k">Descubrimiento de agentes (ERC-8004)</td><td>Agent0 Sepolia</td><td><code>6wQRC7geo9XYAhckfmfo8kbMRLeWU8KQd3XsJqFKmZLT</code></td></tr>
+  </table>
+
+  <h3>Cómo hacemos que The Graph sea estructural y no decorativo</h3>
+  <p>El track premia explícitamente <i>razonar</i> sobre los datos, no mostrarlos. Así que el camino de datos es:</p>
+<pre><code>subgraph en vivo  →  variables de riesgo derivadas (volatilidad realizada, profundidad al notional, concentración)
+                  →  qué componentes de UI pide el agente + sus rangos min/max
+                  →  el mandato que firma el humano
+                  →  re-consulta en el watcher  →  cambio de estado o rechazo</code></pre>
+  <div class="callout ok"><div class="t">La prueba de que es estructural</div>
+  La interfaz generada es <b>distinta para un par volátil que para uno tranquilo</b>, porque el rango permitido del selector de drawdown se deriva de la volatilidad realizada en vivo. Son 15 segundos de demo y no se puede fingir.</div>
+</section>
+
+<!-- ============================ 8 ============================ -->
+<section>
+  <h2>8. Base de datos: por qué sí la necesitamos</h2>
+  <p>La razón no es el volumen de datos, sino que <b>la afirmación central del producto es una tarea <i>persistente</i></b>. "Reabrir la misma tarea desde otro canal" y la vista de auditoría son, literalmente, funciones de almacenamiento. Sin persistencia, la tesis es un truco de demo.</p>
+  <table>
+    <tr><th>Dato</th><th>Por qué no puede vivir en otro sitio</th></tr>
+    <tr><td class="k">El mandato firmado</td><td>ENS solo guarda el hash keccak. Los límites reales son privados (ENS es público). Si lo perdemos no podemos verificar el hash <i>ni</i> aplicar la política.</td></tr>
+    <tr><td class="k">Historial de conversación</td><td>La escena de reapertura cross-canal es "búscalo por identidad de tarea".</td></tr>
+    <tr><td class="k">Recibos x402 + entradas de The Graph</td><td>La vista de auditoría es un entregable evaluado.</td></tr>
+    <tr><td class="k">Gasto acumulado</td><td>El momento del rechazo necesita un total corriente.</td></tr>
+    <tr><td class="k">Caché de consultas a The Graph</td><td>Sin batching de pagos y con un watcher en bucle.</td></tr>
+  </table>
+
+  <h3>Por qué no las alternativas obvias</h3>
+  <p><b>"ENS + HCS es nuestra base de datos"</b> — la tentación web3-nativa; alguien del equipo lo propondrá. No funciona: los registros ENS son públicos, así que límites y saldos son exactamente lo que tenemos prohibido poner ahí; y HCS es solo-append con 5–6 s de retraso en el mirror: sirve como sumidero de auditoría, es inutilizable como almacén de lectura.</p>
+  <p><b>Memoria / archivo JSON</b> — muere en Vercel: sistema de archivos efímero, memoria por instancia, arranques en frío. El fallo concreto: el estado desaparece a mitad de la toma de 4 minutos.</p>
+
+  <h3>El esquema es pequeño: 6 tablas</h3>
+<pre><code>users         wallet, ens_label, created_at
+tasks         id (etiqueta opaca), user_id, ens_name, template, status, created_at, revoked_at
+mandates      task_id, version, typed_data jsonb, signature, hash, signed_at      ← SOLO-APPEND
+messages      task_id, channel, role, content jsonb, created_at
+receipts      task_id, kind (x402|hcs|ens_tx), tx_id, amount, network, payload jsonb
+market_cache  key, payload jsonb, fetched_at, ttl_s</code></pre>
+  <div class="callout why"><div class="t">Dos decisiones deliberadas</div>
+  <b><code>mandates</code> es solo-append, nunca se actualiza.</b> Cada fila lleva su propia firma. Eso hace que "el agente no puede ampliar su propia autoridad" sea <i>demostrable</i> y no una afirmación: cada cambio de autoridad es una fila separada con una firma humana, y la auditoría renderiza la cadena. Un <code>UPDATE</code> destruiría esa propiedad.<br><br>
+  <b>El gasto acumulado se deriva</b> como suma sobre <code>receipts</code>, no como contador mutable. Un contador puede desviarse de la realidad; una suma no, y se reconcilia contra el mirror node.</div>
+  <p><b>Elección:</b> <b>Neon Postgres + Drizzle</b>, aprovisionado desde el marketplace de Vercel. Un clic, driver serverless, y crea una rama por preview deploy, así cada PR tiene datos aislados. No Supabase: su valor es auth y storage, y nosotros hacemos SIWE con cookie JWT. ~2 horas incluyendo migraciones, y es lo menos arriesgado del build: hacerlo pronto precisamente <i>porque</i> es aburrido, para que todo lo demás desarrolle contra persistencia real y no contra stubs que mienten.</p>
+</section>
+
+<!-- ============================ 9 ============================ -->
+<section>
+  <h2>9. Canales: web primero, Telegram como puerta de entrada</h2>
+  <table>
+    <tr><th>Elección</th><th>Por qué</th></tr>
+    <tr><td class="k"><b>La app web</b> es donde se renderiza la UI y se firman los mandatos</td><td>Nos desviamos del reporte, que proponía Telegram primero. Telegram no puede renderizar un selector de asignación ni firmar una transacción de wallet: apostar el diferenciador del producto al peor renderizador era el default equivocado.</td></tr>
+    <tr><td class="k"><b>Telegram vía <code>grammy</code></b>, con deep link a <code>/task/&lt;id&gt;</code></td><td>Mantiene la tesis de "tarea independiente del canal": el bot recibe la intención, responde con un enlace, la web renderiza y firma. Medio día de trabajo.</td></tr>
+    <tr><td class="k">Slack, WhatsApp</td><td><span class="pill bad">descartados</span> No valen un día de los 9.</td></tr>
+  </table>
+  <p>La idea de fondo del reporte se conserva intacta: la plataforma de mensajería es solo transporte. La tarea pertenece a la identidad wallet/ENS, no a Telegram.</p>
+</section>
+
+<!-- ============================ 10 ============================ -->
+<section>
+  <h2>10. Lo que descartamos, y por qué</h2>
+  <table>
+    <tr><th>Descartado</th><th>Razón</th></tr>
+    <tr><td class="k">Vercel AI SDK / LangGraph</td><td>Salida estricta + control del razonamiento importan más que <code>useChat</code> (sección 4).</td></tr>
+    <tr><td class="k"><code>@graphprotocol/client-x402</code>, graphclient</td><td>Tres minas documentadas; la fuga de dinero real es descalificante por sí sola.</td></tr>
+    <tr><td class="k"><code>@hashgraph/sdk</code>, <code>x402.org/facilitator</code></td><td>Falla el requisito duro del facilitador del track (trampa #1). El SDK está renombrado (trampa #7).</td></tr>
+    <tr><td class="k">Supabase</td><td>Cargaríamos auth + storage para el beneficio de una tabla; SIWE ya cubre auth.</td></tr>
+    <tr><td class="k">"ENS + HCS como base de datos"</td><td>ENS es público (límites y saldos están prohibidos ahí); HCS es solo-append con 6 s de retraso.</td></tr>
+    <tr><td class="k">Ejecución DeFi real, permisos de wallet ilimitados, frontend generado por el LLM</td><td>Fuera del alcance de la evaluación (reporte §11.3), y lo último es el anti-patrón que el producto existe para evitar.</td></tr>
+    <tr><td class="k">Turborepo, NextAuth, Prisma</td><td>Coste de configuración sin retorno a este tamaño.</td></tr>
+    <tr><td class="k">Firmar transacciones de Hedera a mano</td><td>Innecesario: <code>@x402/hedera</code> es oficial y lo hace bien.</td></tr>
+  </table>
+</section>
+
+<!-- ============================ 11 ============================ -->
+<section>
+  <h2>11. Verificado en vivo (no sacado de la documentación)</h2>
+  <p>Todo lo siguiente se comprobó contra infraestructura real el 7–8 de septiembre de 2026. Si un tutorial o documento lo contradice, el tutorial está mal.</p>
+  <table>
+    <tr><th>Comprobación</th><th>Resultado</th></tr>
+    <tr><td class="k">Blocky402 testnet <code>/health</code></td><td><span class="pill ok">OK</span> <code>{"status":"ok","version":"1.0.0"}</code></td></tr>
+    <tr><td class="k">Blocky402 testnet <code>/supported</code></td><td><span class="pill ok">OK</span> anuncia <code>x402Version: 2</code>, scheme <code>exact</code>, red <code>hedera:testnet</code>, <code>feePayer: 0.0.7162784</code> — coincide exactamente con <code>QUICKREF.md</code></td></tr>
+    <tr><td class="k"><code>testnet.gateway.thegraph.com</code></td><td><span class="pill bad">SIN DNS</span> Trampa #3 confirmada; sigue apareciendo en la documentación oficial</td></tr>
+    <tr><td class="k"><code>gateway.thegraph.com/api/x402/…</code></td><td><span class="pill ok">VIVO</span> devuelve <code>402</code> sin autenticación</td></tr>
+    <tr><td class="k"><code>gateway.thegraph.com/api/subgraphs/id/…</code></td><td><span class="pill ok">VIVO</span> <code>auth error: missing authorization header</code> → necesita Studio key</td></tr>
+    <tr><td class="k"><code>@x402/hedera</code></td><td><span class="pill ok">EXISTE</span> v2.25.0, oficial de x402-foundation, exporta <code>exact/client</code>, <code>exact/server</code>, <code>exact/facilitator</code>; depende de <code>@hiero-ledger/sdk</code> 2.85.0</td></tr>
+    <tr><td class="k"><code>@hiero-ledger/sdk</code> vs <code>@hashgraph/sdk</code></td><td>2.87.0 vs 2.81.0 — hiero va por delante; el renombre es real</td></tr>
+    <tr><td class="k">Workshop oficial <code>blockydevs/wad2026-x402-workshop</code></td><td>Existe, último push 10 jul 2026. Usa Hono + <code>@x402/hono</code> + <code>@x402/hedera</code> en el servidor y un firmante en subproceso. De ahí sale la API exacta de la sección 6.</td></tr>
+  </table>
+</section>
+
+<!-- ============================ 12 ============================ -->
+<section>
+  <h2>12. Riesgos aceptados y bloqueadores inmediatos</h2>
+  <h3>Riesgos aceptados</h3>
+  <table>
+    <tr><th>Riesgo</th><th>Mitigación</th></tr>
+    <tr><td class="k">ENSv2 en beta + ABIs a mano</td><td>El ítem de mayor riesgo del build. Se ataca el <b>día 1 después del scaffolding</b>, no el día 6. Probar acuñar → delegar → <b>revocar</b> antes de tocar el frontend.</td></tr>
+    <tr><td class="k">Vercel serverless + 6 s de retraso del mirror</td><td><code>maxDuration = 60</code> en la ruta de liquidación. Hono hace que la salida a Railway cueste 20 minutos.</td></tr>
+    <tr><td class="k">Deriva de versiones en <code>@x402/*</code></td><td>Fijadas exactas en 2.25.0; respaldo conocido 2.16.0.</td></tr>
+    <tr><td class="k">Un subgraph deja de indexar</td><td><code>verify:graph</code> lo detecta en CI; segunda fuente en vivo como fallback, <b>nunca</b> datos simulados.</td></tr>
+    <tr><td class="k">Demasiado alcance de "trading"</td><td>Acción simulada controlada por política; nunca fondos reales. No construimos un exchange.</td></tr>
+  </table>
+
+  <h3>Bloqueadores: nadie los ha empezado y frenan trabajo real</h3>
+  <div class="callout bad"><div class="t">Hacer hoy, antes del scaffolding — ~10 minutos cada uno</div>
+  <ul style="margin-bottom:0">
+    <li><b>API key de The Graph Studio.</b> El único bloqueador de toda la capa de The Graph; sin ella todo son stubs.</li>
+    <li><b>Cuenta de Hedera testnet vía <code>portal.hedera.com</code> con email.</b> <i>No</i> el faucet anónimo: crea una cuenta hueca que no puede enviar (trampa #6).</li>
+    <li><b>Registrar <code>custodia.eth</code> en Sepolia</b> (MockUSDC → approve → commit → esperar 60 s → register). Gratis en la práctica.</li>
+    <li><b>Primer commit.</b> El historial vacío es en sí mismo un riesgo de evaluación.</li>
+  </ul></div>
+
+  <h3>Qué recortaríamos sin dudar si nos retrasamos</h3>
+  <p>Recibos en HCS (barato pero no exigido), la segunda plantilla de tarea (colateral en Aave), Telegram. <b>Nunca</b> se recorta: la demo de revocación, la demo de acción denegada, ni los datos en vivo.</p>
+
+  <h3 style="page-break-before: always; margin-top:0;">Calendario (9 días)</h3>
+  <table style="page-break-inside: avoid;">
+    <tr><th>Fecha</th><th>Hito</th></tr>
+    <tr><td class="k">7–8 sept</td><td>Commit de la documentación, scaffolding del workspace, congelar esquemas Zod, stubs de todos los paquetes, corrida falsa de punta a punta.</td></tr>
+    <tr><td class="k">8 sept</td><td>Spike ENSv2 primero: acuñar → delegar → <b>revocar</b>.</td></tr>
+    <tr><td class="k">8–9 sept</td><td>Petición pagada x402 reproducible, de forma independiente.</td></tr>
+    <tr><td class="k">9–10 sept</td><td>Adaptadores de The Graph en vivo.</td></tr>
+    <tr><td class="k">10–12 sept</td><td>Runtime del agente + renderizador de UISpec + motor de políticas.</td></tr>
+    <tr><td class="k">12–13 sept</td><td>Watcher / reacción autónoma, vista de auditoría, adaptador de Telegram.</td></tr>
+    <tr><td class="k">14–15 sept</td><td>Endurecer, README con archivo y línea exactos por sponsor, ensayo.</td></tr>
+    <tr><td class="k">16 sept</td><td>Tres cortes de video (uno por sponsor), envío.</td></tr>
+  </table>
+</section>
+
+<!-- ============================ ANEXO ============================ -->
+<section>
+  <h2>Anexo A. Versiones exactas</h2>
+  <p class="small">Verificadas contra el registro de npm el 8 de septiembre de 2026. Fijar exacto donde se indica.</p>
+  <table>
+    <tr><th>Paquete</th><th>Versión</th><th>Notas</th></tr>
+    <tr><td class="k"><code>@anthropic-ai/sdk</code></td><td>0.124.0</td><td>Modelo <code>claude-opus-5</code>, razonamiento adaptativo</td></tr>
+    <tr><td class="k"><code>@x402/core</code></td><td><b>2.25.0 exacto</b></td><td>Todo <code>@x402/*</code> en bloque</td></tr>
+    <tr><td class="k"><code>@x402/hedera</code></td><td><b>2.25.0 exacto</b></td><td>Fija <code>@x402/core ~2.25.0</code></td></tr>
+    <tr><td class="k"><code>@x402/hono</code></td><td><b>2.25.0 exacto</b></td><td>Middleware del servidor</td></tr>
+    <tr><td class="k"><code>@hiero-ledger/sdk</code></td><td>^2.87.0</td><td>No <code>@hashgraph/sdk</code></td></tr>
+    <tr><td class="k"><code>viem</code></td><td>^2.56 (mín. 2.35)</td><td>ENSv2 con ABIs a mano</td></tr>
+    <tr><td class="k"><code>graphql-request</code></td><td>^7.4.0</td><td>+ Zod en la frontera</td></tr>
+    <tr><td class="k"><code>hono</code></td><td>^4.13</td><td>Risk API</td></tr>
+    <tr><td class="k"><code>next</code> / <code>react</code></td><td>15 / 19</td><td>App Router</td></tr>
+    <tr><td class="k"><code>wagmi</code> / RainbowKit</td><td>v2 / actual</td><td>Solo Sepolia</td></tr>
+    <tr><td class="k"><code>siwe</code> / <code>jose</code></td><td>v3 / actual</td><td>Auth con wallet</td></tr>
+    <tr><td class="k"><code>drizzle-orm</code> + Neon</td><td>actual</td><td>6 tablas</td></tr>
+    <tr><td class="k"><code>grammy</code></td><td>actual</td><td>Adaptador de Telegram</td></tr>
+    <tr><td class="k"><code>zod</code></td><td>v4</td><td><code>@x402/core</code> trae su propio Zod 3 interno; es dependencia, no peer, sin conflicto</td></tr>
+    <tr><td class="k"><code>vitest</code> · <code>@biomejs/biome</code></td><td>actual</td><td>Tests · lint/formato</td></tr>
+  </table>
+
+  <h3>Constantes de infraestructura (de <code>QUICKREF.md</code>)</h3>
+<pre><code>Hedera   facilitador testnet   https://api.testnet.blocky402.com     (sin API key)
+         feePayer testnet      0.0.7162784                            (debe coincidir EXACTO)
+         HBAR asset id         0.0.0                                  (montos en tinybars)
+         faucet                portal.hedera.com                      (con email, 1000 HBAR)
+
+ENSv2    ETHRegistry           0xbdc85dd5b15d7ecb354cd7cb6f2c50b4f2c4f0e2   (Sepolia)
+         UniversalResolverV2   0x4a1817d13e9cf196f471725176355c1234b63c70
+         MockUSDC              0x768f42455a2d082e23ceef7d51e5787c82d67a39   (mint permisivo)
+         ROLE_SET_TEXT         1 &lt;&lt; 4      (admin = rol &lt;&lt; 128)
+
+Graph    gateway gratuito      https://gateway.thegraph.com/api/{KEY}/subgraphs/id/{id}
+         Subgraph MCP (SSE)    https://subgraphs.mcp.thegraph.com/sse</code></pre>
+  <p class="small" style="margin-top:14px;">CustodIA · ETHOnline 2026 · Documento vivo: si algo aquí contradice a <code>QUICKREF.md</code>, gana <code>QUICKREF.md</code>. Si descubres algo nuevo, edita <code>QUICKREF.md</code> y avisa al equipo.</p>
+</section>
+
+</body>
+</html>

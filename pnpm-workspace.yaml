@@ -1,0 +1,25 @@
+packages:
+  - "packages/*"
+  - "apps/*"
+  - "scripts"
+
+# Single source of truth for versions shared across the workspace.
+# @x402/* MUST stay in lockstep at exactly 2.25.0 — never bump one alone.
+catalog:
+  "@x402/core": 2.25.0
+  "@x402/hedera": 2.25.0
+  "@x402/hono": 2.25.0
+  "@x402/paywall": 2.25.0
+  "viem": ^2.56.0
+  "zod": ^4.0.0
+  "hono": ^4.13.0
+
+# Build scripts these packages are allowed to run (pnpm 11 default: ignored).
+# esbuild (tsx/esbuild), keccak + protobufjs (Hedera crypto stack). The rest
+# ship prebuilt binaries / optional native bindings and are left off.
+allowBuilds:
+  esbuild: true
+  keccak: true
+  protobufjs: true
+  bufferutil: false
+  utf-8-validate: false

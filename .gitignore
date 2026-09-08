@@ -1,0 +1,23 @@
+# Local tool state
+archive/
+.claude/
+.commandcode/
+.codemeter/
+
+# Secrets — only the example template is tracked
+.env
+.env.*
+!.env.example
+apps/signer/.env
+
+# Dependencies / build output
+node_modules/
+dist/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+
+# Misc
+.DS_Store
+*.log

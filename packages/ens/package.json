@@ -1,0 +1,28 @@
+{
+  "name": "@custodia/ens",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "files": [
+    "src"
+  ],
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@custodia/schema": "workspace:*",
+    "dotenv": "^17.0.0",
+    "viem": "catalog:",
+    "zod": "catalog:"
+  }
+}

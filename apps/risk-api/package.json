@@ -1,0 +1,37 @@
+{
+  "name": "@custodia/risk-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "dependencies": {
+    "@custodia/db": "workspace:*",
+    "@custodia/graph": "workspace:*",
+    "@custodia/schema": "workspace:*",
+    "@hono/node-server": "^1.13.0",
+    "@x402/core": "catalog:",
+    "@x402/hedera": "catalog:",
+    "@x402/hono": "catalog:",
+    "@x402/paywall": "catalog:",
+    "dotenv": "^17.0.0",
+    "hono": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0"
+  }
+}
