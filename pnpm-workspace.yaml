@@ -23,3 +23,6 @@ allowBuilds:
   protobufjs: true
   bufferutil: false
   utf-8-validate: false
+
+minimumReleaseAgeExclude:
+  - openai@7.12.1

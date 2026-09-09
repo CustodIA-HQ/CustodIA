@@ -8,7 +8,7 @@ trading mandate that a human signs — all recorded as revocable ENSv2 task name
 
 ## Architecture (one paragraph)
 
-The user chats with Claude (`claude-opus-5`) in a web app. The agent runs a strict
+The user chats with an OpenAI model (via the official `openai` SDK, `OPENAI_MODEL`) in a web app. The agent runs a strict
 tool loop: first it fetches live ETH/USDC market context from the **Uniswap V3 subgraph**
 on **The Graph** (`packages/graph`), then it pays **0.1 HBAR** through the **Blocky402**
 x402 facilitator (**Hedera** testnet) to the risk service (`apps/risk-api`), which returns
@@ -43,7 +43,7 @@ docs/superpowers/specs/2026-09-08-prototype-v0-design.md   this iteration's spec
 | 2 | Hedera testnet accounts ×2 (portal.hedera.com, **with email**) | `apps/signer/.env` + `RISK_API_PAYTO` | signer, risk-api |
 | 3 | Sepolia ENSv2: parent name + PermissionedResolver + operator & agent EOAs funded | `ENS_PARENT_NAME`, `ENS_RESOLVER_ADDRESS`, `ENS_OPERATOR_PRIVATE_KEY`, `AGENT_PRIVATE_KEY` | ens, web |
 | 4 | Neon Postgres `DATABASE_URL` · WalletConnect id · `SESSION_SECRET` | `.env` | db, web |
-| 5 | Anthropic API key | `ANTHROPIC_API_KEY` | agent |
+| 5 | OpenAI API key | `OPENAI_API_KEY` (+ optional `OPENAI_MODEL`) | agent |
 
 The anonymous Hedera faucet creates a **hollow account that cannot send** — you want the
 email portal. Portal keys are ECDSA. The ENS one-time setup is documented in

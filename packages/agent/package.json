@@ -20,11 +20,11 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.124.0",
     "@custodia/db": "workspace:*",
     "@custodia/graph": "workspace:*",
     "@custodia/policy": "workspace:*",
     "@custodia/schema": "workspace:*",
+    "openai": "^7.12.0",
     "viem": "catalog:",
     "zod": "catalog:"
   }
