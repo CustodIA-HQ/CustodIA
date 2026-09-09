@@ -19,6 +19,7 @@
     "db:generate": "pnpm --filter @custodia/db db:generate",
     "db:migrate": "pnpm --filter @custodia/db db:migrate",
     "ens:setup": "tsx scripts/ens-setup.ts",
+    "hedera:setup": "tsx scripts/hedera-setup.ts",
     "verify:ens": "tsx scripts/verify-ens.ts",
     "verify:x402": "tsx scripts/verify-x402.ts",
     "verify:graph": "tsx scripts/verify-graph.ts",
