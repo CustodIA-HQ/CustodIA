@@ -48,13 +48,12 @@ for (const { name, id } of ids) {
 }
 
 const pool = await confirmPoolId();
-const match = pool.found.includes(pool.advertised.toLowerCase());
 console.log(
-  match
-    ? `  ✓ pool ${pool.advertised} found on subgraph (${pool.found.join(", ")})`
-    : `  ✗ pool mismatch — advertised ${pool.advertised}, subgraph returned ${pool.found.join(", ")}`,
+  pool.ok
+    ? `  ✓ pool ${pool.advertised} is "${pool.name}"`
+    : `  ✗ pool mismatch — ${pool.advertised} is "${pool.name ?? "not found"}"`,
 );
-if (!match) failed = true;
+if (!pool.ok) failed = true;
 
 const market = await getMarketContext("ETH/USDC", { ttlS: 1 }); // bypass the 30 s cache
 console.log(
