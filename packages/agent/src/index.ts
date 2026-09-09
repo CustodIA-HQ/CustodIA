@@ -199,6 +199,9 @@ export async function runAgent(options: RunAgentOptions): Promise<RunAgentResult
   const runner = client.chat.completions.runTools(
     {
       model: env.openaiModel,
+      // Unset → the API default (medium). "low" is the sensible setting for
+      // Luna on this rigid loop; raise it only if the rationale quality drops.
+      ...(env.reasoningEffort ? { reasoning_effort: env.reasoningEffort } : {}),
       stream: true,
       messages: [{ role: "system", content: SYSTEM_PROMPT }, ...options.messages],
       tools: [marketTool, riskTool, emitTool],

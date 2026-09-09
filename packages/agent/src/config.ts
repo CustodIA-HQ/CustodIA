@@ -3,15 +3,20 @@ import { NotImplementedError } from "@custodia/schema";
 export interface AgentEnv {
   openaiApiKey: string;
   openaiModel: string;
+  reasoningEffort?: ReasoningEffort;
   riskApiUrl: string;
 }
 
+const REASONING_EFFORTS = ["none", "low", "medium", "high", "xhigh", "max"] as const;
+export type ReasoningEffort = (typeof REASONING_EFFORTS)[number];
+
 /**
- * Default model for the 3-tool loop. Override with OPENAI_MODEL to move between
- * tiers (e.g. to stay inside a complimentary-token allowance) without a code
- * change.
+ * Default model for the 3-tool loop: GPT-5.6 Luna, the cheapest tier
+ * ($0.20 / $1.20 per 1M tokens). The loop is a rigid three-step, strict-schema
+ * task, which is what this tier is built for. Override with OPENAI_MODEL
+ * (e.g. gpt-5.6-terra for a demo recording) without a code change.
  */
-const DEFAULT_MODEL = "gpt-5-mini";
+const DEFAULT_MODEL = "gpt-5.6-luna";
 
 /**
  * Product LLM is OpenAI via the official `openai` SDK. The API key is a hard
@@ -22,9 +27,16 @@ export const loadAgentEnv = (env: NodeJS.ProcessEnv = process.env): AgentEnv => 
   if (!openaiApiKey) {
     throw new NotImplementedError("OPENAI_API_KEY");
   }
+  const effort = env.OPENAI_REASONING_EFFORT;
+  if (effort && !REASONING_EFFORTS.includes(effort as ReasoningEffort)) {
+    throw new Error(
+      `OPENAI_REASONING_EFFORT="${effort}" is not one of ${REASONING_EFFORTS.join(", ")}`,
+    );
+  }
   return {
     openaiApiKey,
     openaiModel: env.OPENAI_MODEL ?? DEFAULT_MODEL,
+    reasoningEffort: effort as ReasoningEffort | undefined,
     riskApiUrl: env.RISK_API_URL ?? "http://localhost:8402",
   };
 };

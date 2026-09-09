@@ -189,7 +189,8 @@ TaskStatus    = 'active'|'needs-human'|'completed'|'revoked'
   `RiskContext.drawdownRange` / `maxTradeEnvelopeUsd` before acceptance. Strict schemas cannot express the
   tuples/lazy refs in `ComponentSchema`, so components cross as a JSON string — same gate, different transport.
   The platform appends the authoritative `risk_summary` (server risk numbers + x402 receipt) itself.
-- Model from `OPENAI_MODEL` (default `gpt-5-mini`; pick a tier the account's token allowance covers).
+- Model from `OPENAI_MODEL` (default `gpt-5.6-luna` — cheapest tier, built for rigid structured loops; `gpt-5.6-terra`
+  for a demo recording if rationale quality matters more). Optional `OPENAI_REASONING_EFFORT` (`low` recommended for Luna).
   `maxChatCompletions: 8` bounds the loop. Streaming; `runner.on("content")` forwards text deltas and the tool
   callbacks forward tool events to `onEvent` for the SSE route.
 - System prompt as a real `role: "system"` message: role, the three-step order (market → paid risk → UI), the
@@ -228,7 +229,7 @@ Spent-to-date is `sum(receipts)` — never a counter. `drizzle-kit` migrations c
 
 #### Env (`.env.example` at root; `apps/signer/.env` separate)
 ```
-OPENAI_API_KEY · OPENAI_MODEL (optional) · GRAPH_STUDIO_KEY · DATABASE_URL · SEPOLIA_RPC_URL
+OPENAI_API_KEY · OPENAI_MODEL · OPENAI_REASONING_EFFORT (both optional) · GRAPH_STUDIO_KEY · DATABASE_URL · SEPOLIA_RPC_URL
 ENS_PARENT_NAME=custodia.eth · ENS_RESOLVER_ADDRESS · ENS_OPERATOR_PRIVATE_KEY · AGENT_PRIVATE_KEY
 RISK_API_URL=http://localhost:8402 · RISK_API_PAYTO=0.0.xxxxx (receiving Hedera account) · X402_MAX_HBAR_PER_TASK=1
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID · SESSION_SECRET
