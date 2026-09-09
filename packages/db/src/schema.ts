@@ -1,4 +1,13 @@
-import { integer, jsonb, pgTable, serial, text, timestamp, uniqueIndex, index } from "drizzle-orm/pg-core";
+import {
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  serial,
+  text,
+  timestamp,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 
 /**
  * Spent-to-date is computed from `receipts` (sum of rows) — never a counter
@@ -34,7 +43,7 @@ export const mandates = pgTable(
   },
   (table) => [
     uniqueIndex("mandates_task_version_idx").on(table.taskId, table.version),
-    index("mandates_task_id_idx").on(table.taskId)
+    index("mandates_task_id_idx").on(table.taskId),
   ],
 );
 
@@ -47,16 +56,20 @@ export const messages = pgTable("messages", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
-export const receipts = pgTable("receipts", {
-  id: serial("id").primaryKey(),
-  taskId: text("task_id"),
-  kind: text("kind").notNull(), // x402 | ens_tx
-  txId: text("tx_id").notNull(),
-  amount: text("amount"),
-  network: text("network").notNull(),
-  payload: jsonb("payload"),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-}, (table) => [index("receipts_task_id_idx").on(table.taskId)]);
+export const receipts = pgTable(
+  "receipts",
+  {
+    id: serial("id").primaryKey(),
+    taskId: text("task_id"),
+    kind: text("kind").notNull(), // x402 | ens_tx
+    txId: text("tx_id").notNull(),
+    amount: text("amount"),
+    network: text("network").notNull(),
+    payload: jsonb("payload"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [index("receipts_task_id_idx").on(table.taskId)],
+);
 
 export const marketCache = pgTable("market_cache", {
   key: text("key").primaryKey(),
@@ -70,4 +83,3 @@ export const cursors = pgTable("cursors", {
   lastProcessedId: text("last_processed_id"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
-

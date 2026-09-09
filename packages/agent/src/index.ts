@@ -90,6 +90,7 @@ export async function runAgent(options: RunAgentOptions): Promise<RunAgentResult
   let rationale = "";
   let risk: RiskContext | null = null;
   let lastReceiptTxId: string | null = null;
+  let riskPaymentAttempted = false;
 
   const marketTool = zodFunction({
     name: "get_market_context",
@@ -111,6 +112,8 @@ export async function runAgent(options: RunAgentOptions): Promise<RunAgentResult
     parameters: riskRequestSchema,
     function: async (input) => {
       options.onEvent({ type: "tool", name: "paid_risk_request", input });
+      if (riskPaymentAttempted) return "Denied: a risk payment was already attempted this turn.";
+      riskPaymentAttempted = true;
       const result = await paidRiskRequestTool(input, {
         mandate: makePreflightMandate(options.agent, options.owner),
         state: { spentUsd: 0, now: Math.floor(Date.now() / 1000) },
@@ -214,3 +217,5 @@ export async function runAgent(options: RunAgentOptions): Promise<RunAgentResult
 
   return { uiSpec, receipts, rationale };
 }
+
+export { type PaidFetchResult, PaymentError, paidFetch } from "./x402.js";

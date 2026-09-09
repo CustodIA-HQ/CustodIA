@@ -44,7 +44,7 @@ export async function createTask(
     owner: `0x${string}`;
     agent: `0x${string}`;
   },
-): Promise<TxResult> {
+): Promise<TxResult & { setTextTxIds: `0x${string}`[] }> {
   const name = `${params.taskId}.${params.userLabel}.${config.parentName}`;
   const client = walletClient(config, config.operatorKey);
 

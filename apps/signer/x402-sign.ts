@@ -21,9 +21,9 @@
 // process as the LLM. Swap this file for a KMS/HSM and nothing else changes —
 // same pipe, stronger custody.
 //
-// This signer signs whatever it is handed. It does NOT decide how much an
-// agent may spend: that is the policy engine's job (packages/policy). One job
-// each — this file guards the KEY.
+// This signer independently validates the fixed risk price and trusted payee.
+// The policy engine controls task authorization; this process guards the key
+// and rejects challenges outside its configured payment boundary.
 //
 // Adapted from blockydevs/wad2026-x402-workshop (Apache-2.0).
 // ─────────────────────────────────────────────────────────────────────────────
@@ -64,41 +64,60 @@ const privateKey = env("HEDERA_CLIENT_KEY"); // ECDSA key from portal.hedera.com
 const network = process.env.HEDERA_NETWORK ?? "hedera:testnet";
 
 // ── 2. The challenge, from stdin: { accepts: [{ scheme, network, amount, asset, payTo }] }
-// ── 3. Sign. The SDK builds a native Hedera TransferTransaction.
-// ── 4. Emit ONLY the signed payment header.
+let stdin = "";
+for await (const chunk of process.stdin) stdin += chunk;
+if (!stdin.trim()) {
+  throw new Error("Empty stdin: expected the `payment-required` header value");
+}
+const paymentRequired = decodePaymentRequiredHeader(stdin.trim());
+const expectedPayTo = env("RISK_API_PAYTO");
+const offers = paymentRequired.accepts;
+if (
+  offers.length !== 1 ||
+  offers.some(
+    (offer) =>
+      offer.scheme !== "exact" ||
+      offer.network !== network ||
+      offer.asset !== "0.0.0" ||
+      offer.amount !== "10000000" ||
+      offer.payTo !== expectedPayTo,
+  )
+)
+  throw new Error("Unapproved payment challenge");
+
+// ── 3. Sign. The SDK builds a native Hedera TransferTransaction paying `payTo`
+// the exact `amount` and signs it with your key — but leaves the FEE-PAYER SLOT
+// EMPTY. A signed cheque with unpaid postage: the facilitator adds itself as
+// fee-payer and submits it, but cannot change the amount or the destination —
+// your signature already fixed those.
 //
-// We process stdin line by line. A simple Promise chain acts as an in-memory FIFO queue
-// ensuring Hedera nonce gaps don't occur when the agent sends concurrent requests.
-
-import * as readline from "node:readline";
-
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-  terminal: false
-});
-
-let queue = Promise.resolve();
-
+// Portal keys are ECDSA by default. ED25519 account? Use
+// PrivateKey.fromStringED25519.
 const signer = createClientHederaSigner(accountId, PrivateKey.fromStringECDSA(privateKey), {
   network,
 });
-const client = new x402Client().register("hedera:*", new ExactHederaScheme(signer));
 
-rl.on("line", (line) => {
-  const input = line.trim();
-  if (!input) return;
+// @x402/core ≥ 2.2x ships client-side spend controls that only allow "default"
+// assets (stablecoins it recognises) — native HBAR (asset 0.0.0) is not one, so
+// the challenge would be rejected before signing. Allow HBAR only, and cap every
+// single payment at the risk-api's advertised price. This is the key holder's
+// own defence-in-depth: even if the policy engine is bypassed, this process
+// will never sign more than SIGNER_MAX_TINYBAR_PER_PAYMENT in one go.
+const maxTinybarPerPayment = process.env.SIGNER_MAX_TINYBAR_PER_PAYMENT ?? "10000000"; // 0.1 ℏ
+if (!/^\d+$/.test(maxTinybarPerPayment)) {
+  throw new Error("SIGNER_MAX_TINYBAR_PER_PAYMENT must be an integer tinybar amount");
+}
+const client = x402Client
+  .fromConfig({
+    schemes: [],
+    spendControls: {
+      allowedAssets: [
+        { network: "hedera:*", asset: "0.0.0", maxAmountPerPayment: maxTinybarPerPayment },
+      ],
+    },
+  })
+  .register("hedera:*", new ExactHederaScheme(signer));
+const payload = await client.createPaymentPayload(paymentRequired);
 
-  queue = queue.then(async () => {
-    try {
-      const paymentRequired = decodePaymentRequiredHeader(input);
-      const payload = await client.createPaymentPayload(paymentRequired);
-      // Emit the signature followed by a newline so the parent process can parse it
-      process.stdout.write(encodePaymentSignatureHeader(payload) + "\n");
-    } catch (error) {
-      // In case of error, write a blank line or error so the agent knows it failed
-      process.stderr.write(`Signer error: ${error instanceof Error ? error.message : error}\n`);
-      process.stdout.write("ERROR\n");
-    }
-  });
-});
+// ── 4. Emit ONLY the signed payment header. The key dies with this process.
+process.stdout.write(encodePaymentSignatureHeader(payload));

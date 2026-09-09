@@ -8,6 +8,13 @@
       "when": 1788839984155,
       "tag": "0000_zippy_absorbing_man",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788962366940,
+      "tag": "0001_tired_carlie_cooper",
+      "breakpoints": true
     }
   ]
 }

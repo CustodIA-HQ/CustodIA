@@ -1,4 +1,4 @@
-// using spawn from child_process now
+import { execFile } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Receipt } from "@custodia/schema";
@@ -66,9 +66,6 @@ const PaymentResponseSchema = z.object({
 });
 type PaymentResponse = z.infer<typeof PaymentResponseSchema>;
 
-import { spawn } from "node:child_process";
-import * as readline from "node:readline";
-
 /** Serial execution of IPC to match the signer's internal queue strictly. */
 class Mutex {
   private tail: Promise<unknown> = Promise.resolve();
@@ -85,27 +82,32 @@ class Mutex {
 
 const signerMutex = new Mutex();
 
-let signerProcess: ReturnType<typeof spawn> | null = null;
-let signerRl: readline.Interface | null = null;
-
-const runSigner = (challenge: string): Promise<string> => {
-  if (!signerProcess || signerProcess.killed) {
-    signerProcess = spawn(SIGNER_RUNNER, [SIGNER_PATH], {
-      cwd: dirname(SIGNER_PATH),
-      stdio: ["pipe", "pipe", "pipe"],
+/** One bounded child per signature; no stale shared process or dangling line listener. */
+const runSigner = (challenge: string): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const child = execFile(
+      SIGNER_RUNNER,
+      [SIGNER_PATH],
+      {
+        cwd: dirname(SIGNER_PATH),
+        timeout: 30_000,
+        killSignal: "SIGKILL",
+        maxBuffer: 1024 * 1024,
+        encoding: "utf8",
+      },
+      (error, stdout) => {
+        if (error) return reject(new PaymentError("Signer failed or timed out"));
+        const signature = stdout.trim();
+        if (!signature || signature === "ERROR")
+          return reject(new PaymentError("Signer returned no signature"));
+        resolve(signature);
+      },
+    );
+    child.stdin?.on("error", () => {
+      // execFile reports child failure through its callback.
     });
-    signerRl = readline.createInterface({ input: signerProcess.stdout! });
-    signerProcess.stderr!.on("data", (data) => console.error(`Signer: ${data}`));
-  }
-
-  return new Promise((resolve, reject) => {
-    signerRl!.once("line", (line) => {
-      if (line === "ERROR") reject(new PaymentError("signer failed inside queue"));
-      else resolve(line.trim());
-    });
-    signerProcess!.stdin!.write(challenge + "\n");
+    child.stdin?.end(challenge);
   });
-};
 
 export interface PaidFetchResult<T> {
   status: number;
@@ -134,7 +136,25 @@ export async function paidFetch<T>(
   // The price tag must parse before we pay it — garbage in, garbage signed.
   const tag = decodeHeader<PaymentRequired>(challenge);
   if (!tag) throw new PaymentError("payment-required header is not valid base64 JSON");
-  PaymentRequiredSchema.parse(tag);
+  const validated = PaymentRequiredSchema.parse(tag);
+  const expectedPayTo = process.env.RISK_API_PAYTO;
+  const expectedNetwork = process.env.HEDERA_NETWORK ?? "hedera:testnet";
+  if (!expectedPayTo || !/^\d+\.\d+\.\d+$/.test(expectedPayTo)) {
+    throw new PaymentError("RISK_API_PAYTO must be configured before signing");
+  }
+  // Only a single, explicitly authorized fixed-price offer may reach the key holder.
+  if (
+    validated.accepts.length !== 1 ||
+    validated.accepts.some(
+      (offer) =>
+        offer.scheme !== "exact" ||
+        offer.network !== expectedNetwork ||
+        offer.asset !== "0.0.0" ||
+        offer.amount !== "10000000" ||
+        offer.payTo !== expectedPayTo,
+    )
+  )
+    throw new PaymentError("Payment challenge does not match the approved risk payment");
 
   const signature = await signerMutex.run(async () => runSigner(challenge));
 

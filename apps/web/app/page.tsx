@@ -117,8 +117,8 @@ export default function Home() {
             margin: "0 0 2.5rem",
           }}
         >
-          A conversational runtime that turns a vague financial intent into a bounded,
-          revocable, machine-executable mandate — powered by{" "}
+          A conversational runtime that turns a vague financial intent into a bounded, revocable,
+          machine-executable mandate — powered by{" "}
           <span style={{ color: "#00d4b4" }}>The Graph</span>,{" "}
           <span style={{ color: "#00d4b4" }}>Hedera x402</span> and{" "}
           <span style={{ color: "#00d4b4" }}>ENSv2</span>.
