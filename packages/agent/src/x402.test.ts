@@ -44,7 +44,13 @@ describe("payment authorization and signer failure", () => {
     });
     expect((await paidFetch("https://risk.example")).data).toEqual({ ok: true });
     expect(end).toHaveBeenCalledOnce();
-    expect(fetchMock.mock.calls[1][1].headers["payment-signature"]).toBe("signed-header");
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "https://risk.example",
+      expect.objectContaining({
+        headers: expect.objectContaining({ "payment-signature": "signed-header" }),
+      }),
+    );
   });
   it.each([
     { amount: "10000001" },
