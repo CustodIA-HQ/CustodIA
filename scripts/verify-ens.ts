@@ -50,18 +50,22 @@ const expectRevertNamed = async (
   fail(step, new Error(`expected a revert named ${name}, but the call succeeded`));
 };
 
-const errorNameOf = (err: unknown): string | undefined => {
-  if (typeof err === "object" && err !== null) {
-    const record = err as Record<string, unknown>;
-    if (typeof record.errorName === "string") return record.errorName;
-    if (typeof record.name === "string" && record.name.length < 64) return record.name;
-    for (const value of Object.values(record)) {
-      const nested = errorNameOf(value);
-      if (nested) return nested;
-    }
+// viem nests the decoded revert as `errorName` on a ContractFunctionRevertedError
+// somewhere down the cause chain. Search the whole graph for `errorName` first;
+// only fall back to a plain `name` when nothing was decoded.
+const findErrorName = (value: unknown, seen = new Set<unknown>()): string | undefined => {
+  if (typeof value !== "object" || value === null || seen.has(value)) return undefined;
+  seen.add(value);
+  const record = value as Record<string, unknown>;
+  if (typeof record.errorName === "string") return record.errorName;
+  for (const nested of Object.values(record)) {
+    const found = findErrorName(nested, seen);
+    if (found) return found;
   }
   return undefined;
 };
+const errorNameOf = (err: unknown): string | undefined =>
+  findErrorName(err) ?? (err instanceof Error ? err.name : undefined);
 
 const main = async () => {
   console.log(`owner=${owner} agent=${agent} parent=${config.parentName}`);
@@ -81,9 +85,12 @@ const main = async () => {
     owner,
     agent,
   });
-  console.log(`  ✓ task A name=${a.name} tx=${a.txId}`);
-  console.log(`  ✓ task B name=${b.name} tx=${b.txId}`);
-  console.log(`  🔗 ${explorer(a.txId)}\n  🔗 ${explorer(b.txId)}`);
+  console.log(
+    `  ✓ task A name=${a.name}\n      records ${explorer(a.recordsTxId)}\n      delegate ${explorer(a.txId)}`,
+  );
+  console.log(
+    `  ✓ task B name=${b.name}\n      records ${explorer(b.recordsTxId)}\n      delegate ${explorer(b.txId)}`,
+  );
 
   console.log("agent writes status on A (should succeed)…");
   const okA = await setStatus(config, a.name, "needs-human");

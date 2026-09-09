@@ -17,8 +17,10 @@ const prompt = process.argv[2] ?? (await readStdin());
 const agent = privateKeyToAccount(
   (() => {
     const key = process.env.AGENT_PRIVATE_KEY;
-    if (!key) throw new Error("AGENT_PRIVATE_KEY is required for the CLI harness");
-    return key;
+    if (!key || !/^0x[0-9a-fA-F]{64}$/.test(key)) {
+      throw new Error("AGENT_PRIVATE_KEY (32-byte hex) is required for the CLI harness");
+    }
+    return key as `0x${string}`;
   })(),
 ).address;
 

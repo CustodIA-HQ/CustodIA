@@ -182,3 +182,6 @@ export type Receipt = z.infer<typeof ReceiptSchema>;
 
 export const TaskStatusSchema = z.enum(["active", "needs-human", "completed", "revoked"]);
 export type TaskStatus = z.infer<typeof TaskStatusSchema>;
+
+// EIP-712 mandate domain/types + constraintsHash (see mandate712.ts)
+export * from "./mandate712.js";

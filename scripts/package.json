@@ -14,5 +14,12 @@
     "dotenv": "^17.0.0",
     "graphql-request": "^7.1.0",
     "viem": "catalog:"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
   }
 }
