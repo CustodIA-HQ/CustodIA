@@ -214,3 +214,5 @@ export async function runAgent(options: RunAgentOptions): Promise<RunAgentResult
 
   return { uiSpec, receipts, rationale };
 }
+
+export { type PaidFetchResult, PaymentError, paidFetch } from "./x402.js";

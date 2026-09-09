@@ -82,7 +82,27 @@ const paymentRequired = decodePaymentRequiredHeader(stdin.trim());
 const signer = createClientHederaSigner(accountId, PrivateKey.fromStringECDSA(privateKey), {
   network,
 });
-const client = new x402Client().register("hedera:*", new ExactHederaScheme(signer));
+
+// @x402/core ≥ 2.2x ships client-side spend controls that only allow "default"
+// assets (stablecoins it recognises) — native HBAR (asset 0.0.0) is not one, so
+// the challenge would be rejected before signing. Allow HBAR only, and cap every
+// single payment at the risk-api's advertised price. This is the key holder's
+// own defence-in-depth: even if the policy engine is bypassed, this process
+// will never sign more than SIGNER_MAX_TINYBAR_PER_PAYMENT in one go.
+const maxTinybarPerPayment = process.env.SIGNER_MAX_TINYBAR_PER_PAYMENT ?? "10000000"; // 0.1 ℏ
+if (!/^\d+$/.test(maxTinybarPerPayment)) {
+  throw new Error("SIGNER_MAX_TINYBAR_PER_PAYMENT must be an integer tinybar amount");
+}
+const client = x402Client
+  .fromConfig({
+    schemes: [],
+    spendControls: {
+      allowedAssets: [
+        { network: "hedera:*", asset: "0.0.0", maxAmountPerPayment: maxTinybarPerPayment },
+      ],
+    },
+  })
+  .register("hedera:*", new ExactHederaScheme(signer));
 const payload = await client.createPaymentPayload(paymentRequired);
 
 // ── 4. Emit ONLY the signed payment header. The key dies with this process.
