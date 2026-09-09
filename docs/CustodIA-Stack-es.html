@@ -77,7 +77,7 @@
     <li><span class="n">1</span> Resumen ejecutivo y los dos filtros que decidieron todo</li>
     <li><span class="n">2</span> Arquitectura general y flujo de datos</li>
     <li><span class="n">3</span> Plataforma base (runtime, monorepo, web, API, tests, CI)</li>
-    <li><span class="n">4</span> Runtime del agente (Claude) y UX generativa</li>
+    <li><span class="n">4</span> Runtime del agente (OpenAI) y UX generativa</li>
     <li><span class="n">5</span> Web3 e identidad: ENSv2 en Sepolia</li>
     <li><span class="n">6</span> Hedera: el riel de pagos x402</li>
     <li><span class="n">7</span> The Graph: inteligencia en vivo</li>
@@ -118,7 +118,7 @@
 packages/graph     adaptadores tipados de subgraphs (Uniswap V3, Aave v3, Agent0)
 packages/policy    motor de políticas determinista: permitir / denegar + razón
 packages/ens       ENSv2: createTask · delegateAgent · revokeAgent · resolveTask
-packages/agent     runtime del agente (Claude, tool-calling) → emite UISpec
+packages/agent     runtime del agente (OpenAI SDK, tool-calling) → emite UISpec
 
 apps/web           Next.js: chat · renderizador de UISpec · página de tarea
                    · vista de auditoría · webhook de Telegram
@@ -176,22 +176,25 @@ apps/signer        firmante delegado: la clave Hedera vive SOLO aquí (proceso a
   </table>
 
   <h3>Los tres scripts de verificación</h3>
+<div style="page-break-inside: avoid;">
 <pre><code>pnpm verify:ens     acuñar → delegar → escribir → REVOCAR → probar que la escritura ahora revierte
 pnpm verify:x402    402 → liquidación en Blocky402 → fila en el mirror node bajo feePayer 0.0.7162784
 pnpm verify:graph   _meta{block{number}} en cada ID de subgraph + una consulta real</code></pre>
   <p class="small">Estos scripts son la prueba reproducible que exige cada track ("sin datos simulados", "una petición pagada real de punta a punta"). También fallan el CI si un subgraph deja de indexar.</p>
+  </div>
 </section>
 
 <!-- ============================ 4 ============================ -->
 <section>
-  <h2>4. Runtime del agente (Claude) y UX generativa</h2>
+  <h2>4. Runtime del agente (OpenAI) y UX generativa</h2>
   <table>
     <tr><th>Elección</th><th>Por qué</th></tr>
-    <tr><td class="k"><b>SDK oficial de Anthropic</b> (<code>@anthropic-ai/sdk</code>), directo. <i>No</i> Vercel AI SDK ni LangGraph.</td><td>Nos desviamos del reporte original. Tres razones específicas de este producto: (1) la UISpec es una <b>frontera de seguridad</b> y necesita <code>strict: true</code> / salidas estructuradas, que las capas de abstracción multi-proveedor aplanan; (2) la <i>justificación</i> del agente es un artefacto evaluado por el track de The Graph, y sale del razonamiento adaptativo + <code>effort</code>, que son específicos de Claude; (3) el <code>toolRunner</code> del SDK ya <i>es</i> el bucle del agente, con hooks por turno: exactamente donde el motor de políticas veta una llamada a herramienta antes de ejecutarla.</td></tr>
-    <tr><td class="k"><b><code>claude-opus-5</code></b>, <code>thinking: {type: "adaptive"}</code>, <code>effort: "high"</code></td><td>Sin <code>budget_tokens</code> (devuelve 400 en Opus 5). Una demo de 4 minutos cuesta centavos; el costo no es una restricción.</td></tr>
-    <tr><td class="k"><code>betaZodTool</code> + <code>toolRunner</code></td><td>Herramientas: <code>graph.getMarketContext</code>, <code>risk.paidRequest</code>, <code>task.create</code>, <code>task.setStatus</code>, <code>ui.emit</code>.</td></tr>
-    <tr><td class="k">Fallbacks de rechazo del lado del servidor, activados por defecto</td><td><code>betas: ["server-side-fallback-2026-07-01"]</code>, <code>fallbacks: "default"</code>. Evita que un rechazo del clasificador de seguridad tumbe la demo.</td></tr>
-    <tr><td class="k">Streaming al navegador con un hook SSE de ~60 líneas</td><td>Es lo que perdemos al no usar <code>useChat</code>. Es un hook, no un framework.</td></tr>
+    <tr><td class="k"><b>SDK oficial de OpenAI</b> (<code>openai</code>), directo. <i>No</i> Vercel AI SDK ni LangGraph.</td><td>El equipo tiene tokens gratuitos en OpenAI, así que el proveedor está decidido. Vamos directo al SDK: el bucle de herramientas (<code>chat.completions.runTools</code>) y los esquemas estrictos (<code>zodFunction</code>) ya vienen incluidos, y una capa intermedia solo añadiría algo que depurar. Lo único que ganaríamos con el Vercel AI SDK es <code>useChat</code>; un hook SSE de ~60 líneas lo cubre.</td></tr>
+    <tr><td class="k"><b>Modelo desde <code>OPENAI_MODEL</code></b> (por defecto <code>gpt-5-mini</code>)</td><td>Para un bucle de 3 herramientas un modelo de la gama <i>mini</i> sobra, y es el que más ejecuciones gratuitas da en los ensayos de la demo. Cambiar de gama es una variable de entorno, no código.</td></tr>
+    <tr><td class="k"><code>zodFunction</code> + <code>runTools</code> con <code>stream: true</code></td><td>Herramientas: <code>get_market_context</code>, <code>paid_risk_request</code>, <code>emit_ui_spec</code>. Los esquemas se convierten a JSON Schema <b>estricto</b>: el callback solo recibe argumentos ya validados por Zod. La comprobación de política corre al principio del callback de pago, <i>antes</i> de firmar nada. <code>maxChatCompletions: 8</code> acota el bucle.</td></tr>
+    <tr><td class="k">Componentes como JSON string en <code>emit_ui_spec</code></td><td>El modo estricto de OpenAI no admite tuplas ni referencias perezosas, que sí existen en <code>ComponentSchema</code>. Los componentes cruzan como texto JSON y <code>UISpecSchema</code> los valida al llegar: la misma frontera, distinto transporte. La plataforma añade ella misma el <code>risk_summary</code> con los números del servicio de riesgo y el recibo x402.</td></tr>
+    <tr><td class="k">Prompt de sistema como mensaje <code>role: "system"</code></td><td>Contiene el orden de los tres pasos, las formas exactas de cada componente y las dos reglas: "nunca inventes números" y "si una herramienta es denegada por política, dilo y para".</td></tr>
+    <tr><td class="k">Streaming al navegador con un hook SSE de ~60 líneas</td><td><code>runner.on("content")</code> emite los deltas de texto; los callbacks emiten los eventos de herramienta. Es un hook, no un framework.</td></tr>
   </table>
 
   <h3>La regla de la UX generativa</h3>
@@ -246,7 +249,7 @@ Component = price_chart | allocation_selector | range_slider | amount_selector
     <tr><td class="k"><b><code>@x402/core</code> + <code>@x402/hedera</code> + <code>@x402/hono</code>, todos fijados en <code>2.25.0</code> exacto</b></td><td><code>@x402/hedera</code> existe y es oficial de x402-foundation (habíamos asumido que tendríamos que firmar la <code>TransferTransaction</code> a mano — no hace falta). Fija <code>@x402/core ~2.25.0</code>, así que todo el conjunto <code>@x402/*</code> debe moverse en bloque. Respaldo conocido: <code>2.16.0</code> (la versión del workshop oficial).</td></tr>
     <tr><td class="k"><b><code>@hiero-ledger/sdk</code> ^2.87</b></td><td><i>No</i> <code>@hashgraph/sdk</code>: el renombre es la trampa #7 y hiero va 6 versiones menores por delante. Todo snippet anterior a 2026 está mal en algo.</td></tr>
     <tr><td class="k"><b>Facilitador Blocky402 testnet</b> <code>api.testnet.blocky402.com</code>, sin API key</td><td>Requisito duro del track. <b>Verificado en vivo:</b> <code>x402Version 2</code>, red <code>hedera:testnet</code>, <code>feePayer 0.0.7162784</code>. El starter oficial de Hedera apunta a <code>x402.org/facilitator</code> y <i>falla el track</i> (trampa #1).</td></tr>
-    <tr><td class="k"><b>Firmante delegado en subproceso</b> (patrón del workshop)</td><td>La clave privada de Hedera <b>nunca entra en la ventana de contexto del LLM</b>. Con un bucle de herramientas de Opus leyendo datos de subgraphs, una inyección de prompt en el mismo proceso = clave robada. Una frontera de proceso (stdin → firma → stdout) lo hace estructuralmente imposible. Y es una frase de 30 segundos para un juez que lee código.</td></tr>
+    <tr><td class="k"><b>Firmante delegado en subproceso</b> (patrón del workshop)</td><td>La clave privada de Hedera <b>nunca entra en la ventana de contexto del LLM</b>. Con un bucle de herramientas del LLM leyendo datos de subgraphs, una inyección de prompt en el mismo proceso = clave robada. Una frontera de proceso (stdin → firma → stdout) lo hace estructuralmente imposible. Y es una frase de 30 segundos para un juez que lee código.</td></tr>
     <tr><td class="k"><b>Precio en HBAR</b> (asset <code>0.0.0</code>, tinybars), no USDC</td><td>Evita por completo la asociación de tokens HTS.</td></tr>
     <tr><td class="k">Campos numéricos estructurados; el LLM solo escribe la explicación</td><td>El motor de políticas y la UI consumen los números. Un LLM nunca decide una cifra.</td></tr>
     <tr><td class="k">Topic HCS de auditoría <span class="pill">stretch</span> con <code>submitKey</code>, sin custom fees</td><td>$0.0008 por mensaje. Sin <code>submitKey</code>, cualquiera puede escribir en nuestro "registro de auditoría". Con custom fees, crear el topic cuesta $2.00.</td></tr>
@@ -362,7 +365,7 @@ market_cache  key, payload jsonb, fetched_at, ttl_s</code></pre>
   <h2>10. Lo que descartamos, y por qué</h2>
   <table>
     <tr><th>Descartado</th><th>Razón</th></tr>
-    <tr><td class="k">Vercel AI SDK / LangGraph</td><td>Salida estricta + control del razonamiento importan más que <code>useChat</code> (sección 4).</td></tr>
+    <tr><td class="k">Vercel AI SDK / LangGraph</td><td>El SDK de OpenAI ya trae el bucle de herramientas y los esquemas estrictos; una capa más solo añade algo que depurar. <code>useChat</code> no justifica la dependencia (sección 4).</td></tr>
     <tr><td class="k"><code>@graphprotocol/client-x402</code>, graphclient</td><td>Tres minas documentadas; la fuga de dinero real es descalificante por sí sola.</td></tr>
     <tr><td class="k"><code>@hashgraph/sdk</code>, <code>x402.org/facilitator</code></td><td>Falla el requisito duro del facilitador del track (trampa #1). El SDK está renombrado (trampa #7).</td></tr>
     <tr><td class="k">Supabase</td><td>Cargaríamos auth + storage para el beneficio de una tabla; SIWE ya cubre auth.</td></tr>
@@ -435,7 +438,7 @@ market_cache  key, payload jsonb, fetched_at, ttl_s</code></pre>
   <p class="small">Verificadas contra el registro de npm el 8 de septiembre de 2026. Fijar exacto donde se indica.</p>
   <table>
     <tr><th>Paquete</th><th>Versión</th><th>Notas</th></tr>
-    <tr><td class="k"><code>@anthropic-ai/sdk</code></td><td>0.124.0</td><td>Modelo <code>claude-opus-5</code>, razonamiento adaptativo</td></tr>
+    <tr><td class="k"><code>openai</code></td><td>^7.12.1</td><td><code>chat.completions.runTools</code> + <code>zodFunction</code>; modelo vía <code>OPENAI_MODEL</code></td></tr>
     <tr><td class="k"><code>@x402/core</code></td><td><b>2.25.0 exacto</b></td><td>Todo <code>@x402/*</code> en bloque</td></tr>
     <tr><td class="k"><code>@x402/hedera</code></td><td><b>2.25.0 exacto</b></td><td>Fija <code>@x402/core ~2.25.0</code></td></tr>
     <tr><td class="k"><code>@x402/hono</code></td><td><b>2.25.0 exacto</b></td><td>Middleware del servidor</td></tr>

@@ -18,7 +18,7 @@ You are the implementing engineer for **CustodIA**, a hackathon prototype. You w
 5. **The agent never emits code.** It emits a `UISpec` JSON validated by Zod against the component registry. An invalid spec is an error shown in chat — not a retry with a default UI.
 6. **Facilitator is `https://api.testnet.blocky402.com`, fee payer `0.0.7162784`.** Never `x402.org/facilitator` — it works and silently fails the track.
 7. **Do not claim standards we don't implement.** `xyz.custodia.*` ENS keys are ours. Our mandate is *AP2-style*, not AP2-compliant. Say so in code comments and README.
-8. **The product's LLM is Claude `claude-opus-5` via `@anthropic-ai/sdk`.** Do not substitute another provider inside the product, regardless of which model *you* are.
+8. **The product's LLM is OpenAI via the official `openai` SDK** (`OPENAI_API_KEY`, model from `OPENAI_MODEL`). Do not substitute another provider or a wrapper framework inside the product, regardless of which model *you* are.
 9. Read `QUICKREF.md` in the repo before writing any chain code. When a tutorial contradicts it, the tutorial is wrong.
 
 **Style:** TypeScript strict, ESM, Node 22, pnpm workspaces, Biome. Small files with one purpose. Zod at every external boundary. No `any`. Comments explain *why*, not *what*.
@@ -55,7 +55,7 @@ brainstorming session; nothing new is introduced.
 #### Scope
 
 **In:** monorepo scaffold · frozen Zod schemas · Uniswap V3 adapter · x402 Risk API + delegated signer ·
-ENS task write/delegate/revoke · deterministic policy engine · Claude tool-loop agent emitting `UISpec` ·
+ENS task write/delegate/revoke · deterministic policy engine · OpenAI tool-loop agent emitting `UISpec` ·
 web chat + UISpec renderer + mandate signing + task page (status, receipts, **revoke**, **simulate action**) ·
 3 live verify scripts · vitest for policy · GitHub Actions (typecheck + test).
 
@@ -70,7 +70,7 @@ packages/schema     Zod contract (below). No runtime deps besides zod.
 packages/graph      getMarketContext(pair) + verify script
 packages/policy     evaluate(mandate, action, state) + tests
 packages/ens        createTask / setStatus / revokeAgent / resolveTask + verify script
-packages/agent      runAgent() — @anthropic-ai/sdk toolRunner + x402 paidFetch client
+packages/agent      runAgent() — openai SDK runTools + zodFunction + x402 paidFetch client
 packages/db         Drizzle schema + migrations + Neon client
 apps/risk-api       Hono + @x402/hono, POST /risk/portfolio (paid), GET /health
 apps/signer         x402-sign.ts — stdin challenge → stdout signature; owns HEDERA_CLIENT_KEY
@@ -78,7 +78,7 @@ apps/web            Next.js 15: / (chat) · /task/[id] · API routes
 docs/               existing PDF/HTML; copy this spec to docs/superpowers/specs/2026-09-08-prototype-v0-design.md
 ```
 
-Pins: all `@x402/*` **exactly `2.25.0`**; `@hiero-ledger/sdk ^2.87`; `viem ^2.56`; `@anthropic-ai/sdk ^0.124`;
+Pins: all `@x402/*` **exactly `2.25.0`**; `@hiero-ledger/sdk ^2.87`; `viem ^2.56`; `openai ^7.12`;
 `graphql-request ^7.4`; `hono ^4.13`; `next 15`; `zod ^4`. Node 22, pnpm.
 
 #### packages/schema — the frozen contract (day 1, before any other code)
@@ -181,16 +181,22 @@ TaskStatus    = 'active'|'needs-human'|'completed'|'revoked'
 
 ##### packages/agent
 - `runAgent({ messages, onEvent }): Promise<{ uiSpec: UISpec; receipts: Receipt[]; rationale: string }>` using
-  `@anthropic-ai/sdk` `client.beta.messages.toolRunner` with `betaZodTool`s:
+  the official `openai` SDK: `client.chat.completions.runTools({ stream: true, tools })` with `zodFunction` tools
+  (strict JSON schemas — callbacks only ever see Zod-validated arguments):
   `get_market_context(pair)` → graph; `paid_risk_request(input)` → policy check for `pay_x402` **before**
-  calling `paidFetch` (deny → tool returns the denial, agent must explain); `emit_ui_spec(spec)` → Zod-validate;
-  bounds are **clipped server-side** to `RiskContext.drawdownRange` / `maxTradeEnvelopeUsd` before acceptance.
-- Model `claude-opus-5`, `thinking:{type:'adaptive'}`, `output_config:{effort:'high'}`,
-  `betas:['server-side-fallback-2026-07-01']`, `fallbacks:'default'`. Streaming; forward text deltas and tool
-  events to `onEvent` for the SSE route.
-- System prompt (short, stable — cacheable): role, the three-step order (market → paid risk → UI), "never invent
-  numbers; every bound must cite the risk context", "if a tool is denied by policy, say so and stop".
-- Invalid UISpec → error surfaced in chat; no retry-with-fallback UI.
+  calling `paidFetch` (deny → tool returns the denial, agent must explain); `emit_ui_spec({ rationale,
+  components_json })` → `JSON.parse` + `UISpecSchema` gate; bounds are **clipped server-side** to
+  `RiskContext.drawdownRange` / `maxTradeEnvelopeUsd` before acceptance. Strict schemas cannot express the
+  tuples/lazy refs in `ComponentSchema`, so components cross as a JSON string — same gate, different transport.
+  The platform appends the authoritative `risk_summary` (server risk numbers + x402 receipt) itself.
+- Model from `OPENAI_MODEL` (default `gpt-5-mini`; pick a tier the account's token allowance covers).
+  `maxChatCompletions: 8` bounds the loop. Streaming; `runner.on("content")` forwards text deltas and the tool
+  callbacks forward tool events to `onEvent` for the SSE route.
+- System prompt as a real `role: "system"` message: role, the three-step order (market → paid risk → UI), the
+  exact component shapes for `components_json`, "never invent numbers; every bound must cite the risk context",
+  "if a tool is denied by policy, say so and stop".
+- Invalid UISpec → `INVALID_UISPEC: <zod message>` returned to the model (it may fix its JSON; the completion
+  cap bounds retries); a turn that ends without a valid spec yields `uiSpec: null` — no fallback UI, ever.
 
 ##### packages/db (Neon + Drizzle)
 ```
@@ -222,7 +228,7 @@ Spent-to-date is `sum(receipts)` — never a counter. `drizzle-kit` migrations c
 
 #### Env (`.env.example` at root; `apps/signer/.env` separate)
 ```
-ANTHROPIC_API_KEY · GRAPH_STUDIO_KEY · DATABASE_URL · SEPOLIA_RPC_URL
+OPENAI_API_KEY · OPENAI_MODEL (optional) · GRAPH_STUDIO_KEY · DATABASE_URL · SEPOLIA_RPC_URL
 ENS_PARENT_NAME=custodia.eth · ENS_RESOLVER_ADDRESS · ENS_OPERATOR_PRIVATE_KEY · AGENT_PRIVATE_KEY
 RISK_API_URL=http://localhost:8402 · RISK_API_PAYTO=0.0.xxxxx (receiving Hedera account) · X402_MAX_HBAR_PER_TASK=1
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID · SESSION_SECRET
@@ -235,7 +241,7 @@ apps/signer/.env: HEDERA_CLIENT_ID · HEDERA_CLIENT_KEY (ECDSA, from portal.hede
 2. Hedera testnet account via **portal.hedera.com with email** (anonymous faucet = hollow account, can't send).
    Two accounts: payer (signer) and payee (risk-api `payTo`).
 3. Sepolia: register parent name, deploy resolver; fund operator + agent EOAs with Sepolia ETH.
-4. Neon project → `DATABASE_URL`. WalletConnect project id. Anthropic API key.
+4. Neon project → `DATABASE_URL`. WalletConnect project id. OpenAI API key (org-level: invite teammates to the org and give each their own project key).
 
 #### Build order (each step ends in a commit; small and often — history is judged)
 1. **Scaffold** — workspace, biome, tsconfig, CI, `.env.example`, `packages/schema` complete, every other package
@@ -335,16 +341,19 @@ testnet.gateway.thegraph.com   HAS NO DNS RECORD despite being in the official d
 No payment batching (issue #1031) → cache every response (market_cache, 30 s TTL).
 ```
 
-### Anthropic SDK (product agent)
+### OpenAI SDK (product agent) — verified against `openai@7.12.1`
 ```ts
-import Anthropic from "@anthropic-ai/sdk";
-import { betaZodTool } from "@anthropic-ai/sdk/helpers/beta/zod";
-// client.beta.messages.toolRunner({ model: "claude-opus-5", max_tokens: 16000,
-//   thinking: { type: "adaptive" }, output_config: { effort: "high" },
-//   betas: ["server-side-fallback-2026-07-01"], fallbacks: "default", tools: [...], messages })
-// No `budget_tokens` (400 on Opus 5). No assistant prefill (400). Parse tool inputs with JSON.parse, never string-match.
+import OpenAI from "openai";
+import { zodFunction } from "openai/helpers/zod";          // supports zod v3 and v4
+// tool: zodFunction({ name, description, parameters: zodSchema, function: async (args) => string })
+// loop: client.chat.completions.runTools({ model, stream: true, messages, tools }, { maxChatCompletions: 8 })
+//       runner.on("content", (delta) => …); await runner.finalContent();
+// System prompt is a real { role: "system" } message — never a leading assistant message.
+// Strict function schemas: no tuples / lazy refs / additionalProperties. Complex payloads cross as JSON strings
+// and are validated with Zod on arrival. Tool callbacks return strings.
 ```
-Verify exact `toolRunner` / `betaZodTool` signatures against the installed SDK's README (`node_modules/@anthropic-ai/sdk/README.md` and `helpers/beta/zod`) before writing the loop.
+`chat.completions.runTools` is stable (not beta) in this version. Confirm the runner event names in
+`node_modules/openai/lib/ChatCompletionStreamingRunner.d.ts` if anything drifts.
 
 ---
 
