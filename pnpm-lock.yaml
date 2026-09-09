@@ -170,6 +170,9 @@ importers:
         specifier: ^0.44.0
         version: 0.44.7(@neondatabase/serverless@1.1.0)
     devDependencies:
+      dotenv:
+        specifier: ^17.4.2
+        version: 17.4.2
       drizzle-kit:
         specifier: ^0.31.0
         version: 0.31.10
