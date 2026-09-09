@@ -1,22 +1,19 @@
-:root {
-  color-scheme: light dark;
-}
-
-* {
+*, *::before, *::after {
   box-sizing: border-box;
 }
 
-body {
+html, body {
   margin: 0;
-  font-family:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  background: #fafafa;
-  min-height: 100vh;
+  padding: 0;
+  background: #0a0f1e;
+  color: #e2f0ff;
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-@media (prefers-color-scheme: dark) {
-  body {
-    background: #111;
-    color: #eee;
-  }
+.gradient-text {
+  background: linear-gradient(135deg, #e2f0ff 30%, #00d4b4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }

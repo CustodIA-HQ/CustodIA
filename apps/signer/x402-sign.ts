@@ -64,26 +64,41 @@ const privateKey = env("HEDERA_CLIENT_KEY"); // ECDSA key from portal.hedera.com
 const network = process.env.HEDERA_NETWORK ?? "hedera:testnet";
 
 // ── 2. The challenge, from stdin: { accepts: [{ scheme, network, amount, asset, payTo }] }
-let stdin = "";
-for await (const chunk of process.stdin) stdin += chunk;
-if (!stdin.trim()) {
-  throw new Error("Empty stdin: expected the `payment-required` header value");
-}
-const paymentRequired = decodePaymentRequiredHeader(stdin.trim());
-
-// ── 3. Sign. The SDK builds a native Hedera TransferTransaction paying `payTo`
-// the exact `amount` and signs it with your key — but leaves the FEE-PAYER SLOT
-// EMPTY. A signed cheque with unpaid postage: the facilitator adds itself as
-// fee-payer and submits it, but cannot change the amount or the destination —
-// your signature already fixed those.
+// ── 3. Sign. The SDK builds a native Hedera TransferTransaction.
+// ── 4. Emit ONLY the signed payment header.
 //
-// Portal keys are ECDSA by default. ED25519 account? Use
-// PrivateKey.fromStringED25519.
+// We process stdin line by line. A simple Promise chain acts as an in-memory FIFO queue
+// ensuring Hedera nonce gaps don't occur when the agent sends concurrent requests.
+
+import * as readline from "node:readline";
+
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout,
+  terminal: false
+});
+
+let queue = Promise.resolve();
+
 const signer = createClientHederaSigner(accountId, PrivateKey.fromStringECDSA(privateKey), {
   network,
 });
 const client = new x402Client().register("hedera:*", new ExactHederaScheme(signer));
-const payload = await client.createPaymentPayload(paymentRequired);
 
-// ── 4. Emit ONLY the signed payment header. The key dies with this process.
-process.stdout.write(encodePaymentSignatureHeader(payload));
+rl.on("line", (line) => {
+  const input = line.trim();
+  if (!input) return;
+
+  queue = queue.then(async () => {
+    try {
+      const paymentRequired = decodePaymentRequiredHeader(input);
+      const payload = await client.createPaymentPayload(paymentRequired);
+      // Emit the signature followed by a newline so the parent process can parse it
+      process.stdout.write(encodePaymentSignatureHeader(payload) + "\n");
+    } catch (error) {
+      // In case of error, write a blank line or error so the agent knows it failed
+      process.stderr.write(`Signer error: ${error instanceof Error ? error.message : error}\n`);
+      process.stdout.write("ERROR\n");
+    }
+  });
+});
