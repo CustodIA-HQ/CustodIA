@@ -35,7 +35,7 @@ export const loadAgentEnv = (env: NodeJS.ProcessEnv = process.env): AgentEnv => 
   }
   return {
     openaiApiKey,
-    openaiModel: env.OPENAI_MODEL ?? DEFAULT_MODEL,
+    openaiModel: env.OPENAI_MODEL?.trim() || DEFAULT_MODEL,
     reasoningEffort: effort as ReasoningEffort | undefined,
     riskApiUrl: env.RISK_API_URL ?? "http://localhost:8402",
   };
