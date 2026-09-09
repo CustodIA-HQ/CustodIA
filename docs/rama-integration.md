@@ -1,6 +1,6 @@
 # Rama integration
 
-This branch combines Rama_Angel with main through 28a9032, including the local signer spend-control and paidFetch export changes present during integration.
+This branch combines Rama_Angel with main through 0b01948, including the signer spend-control, paidFetch export, and payment verification changes committed during integration.
 
 The landing page and extra policy/schema tests are retained. The persistent signer is replaced by an asynchronous child per signature with a 30-second deadline and serialized signing. Both the agent and signer require one exact 10,000,000-tinybar HBAR offer on the configured Hedera network, payable to RISK_API_PAYTO. Configure that trusted recipient in the root environment and apps/signer/.env. Existing SIGNER_MAX_TINYBAR_PER_PAYMENT remains an additional ceiling. No automatic signing retry occurs after a child failure.
 

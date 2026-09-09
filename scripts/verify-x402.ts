@@ -69,17 +69,35 @@ const main = async () => {
     console.log("  waiting 6 s for mirror-node propagation…");
     await sleep(6000);
 
-    const txId = encodeURIComponent(result.receipt.txId);
-    const mirror = await fetch(`https://testnet.mirrornode.hedera.com/api/v1/transactions/${txId}`);
+    // The SDK reports ids as `0.0.x@sec.nanos`; the mirror node and HashScan
+    // address them as `0.0.x-sec-nanos`.
+    const mirrorId = result.receipt.txId.replace("@", "-").replace(/\.(\d+)$/, "-$1");
+    const mirror = await fetch(
+      `https://testnet.mirrornode.hedera.com/api/v1/transactions/${mirrorId}`,
+    );
     if (!mirror.ok) {
       throw new Error(`mirror node ${mirror.status} — payment not visible yet`);
     }
-    const row = (await mirror.json()) as { transactions?: unknown[] };
-    if (!row.transactions?.length) {
-      throw new Error("mirror node returned no transaction records");
-    }
-    console.log(`  ✓ mirror node row present (${row.transactions.length} record(s))`);
-    console.log(`  🔗 https://hashscan.io/testnet/transaction/${result.receipt.txId}`);
+    const row = (await mirror.json()) as {
+      transactions?: Array<{
+        result: string;
+        transfers: Array<{ account: string; amount: number }>;
+      }>;
+    };
+    const record = row.transactions?.[0];
+    if (!record) throw new Error("mirror node returned no transaction records");
+    if (record.result !== "SUCCESS") throw new Error(`mirror node result ${record.result}`);
+    const paidBy = (account: string) =>
+      record.transfers.find((t) => t.account === account)?.amount ?? 0;
+    const payTo = process.env.RISK_API_PAYTO ?? "";
+    const feePayer = "0.0.7162784"; // Blocky402 testnet fee payer — the track's hard requirement
+    if (paidBy(payTo) <= 0) throw new Error(`payee ${payTo} did not receive HBAR in ${mirrorId}`);
+    if (paidBy(feePayer) >= 0)
+      throw new Error(`fee payer ${feePayer} did not sponsor the fee in ${mirrorId}`);
+    console.log(
+      `  ✓ mirror node: SUCCESS — payee ${payTo} +${paidBy(payTo) / 1e8} ℏ, network fee ${-paidBy(feePayer) / 1e8} ℏ sponsored by Blocky402 ${feePayer}`,
+    );
+    console.log(`  🔗 https://hashscan.io/testnet/transaction/${mirrorId}`);
     console.log("\nverify:x402 OK");
   } finally {
     if (child) {
