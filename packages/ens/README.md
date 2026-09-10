@@ -49,7 +49,8 @@ uses one of them so the choice is visible in review.
 ## Permissions model
 
 `createTask` writes `xyz.custodia.owner`, `xyz.custodia.mandate`,
-`xyz.custodia.agent`, `xyz.custodia.status='active'` (operator key) then calls
+`xyz.custodia.agent`, `xyz.custodia.status='active'`, and the accepted
+`xyz.custodia.chart` / `xyz.custodia.ui` payloads (operator key) then calls
 `authorizeTextRoles(dnsName(task), 'xyz.custodia.status', agent, true)`.
 After that the agent can flip the status key; a `revokeAgent` runs the same
 authorization with `false`, after which the agent's next write reverts with

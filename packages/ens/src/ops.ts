@@ -17,10 +17,17 @@ const STATUS_KEY = "xyz.custodia.status";
 export interface CreateTaskResult {
   /** The full task subname (wildcard — no registry write, no rent). */
   name: string;
-  /** Hash of the multicall that wrote the four records. */
+  /** Hash of the multicall that wrote the task records. */
   recordsTxId: `0x${string}`;
   /** Hash of the authorizeTextRoles call that scoped the agent to the status key. */
   txId: `0x${string}`;
+}
+
+export interface TaskRecords {
+  /** Compact chart payload: source, range and the hourly closes to render. */
+  chart?: string;
+  /** The accepted, schema-validated UI spec for this guard. */
+  ui?: string;
 }
 
 // Local accounts sign here and broadcast a raw tx. A bare hex key would be
@@ -62,7 +69,7 @@ export async function createTask(
     mandateHash: `0x${string}`;
     owner: `0x${string}`;
     agent: `0x${string}`;
-  },
+  } & TaskRecords,
 ): Promise<CreateTaskResult> {
   const name = `${params.taskId}.${params.userLabel}.${config.parentName}`;
   const wallet = walletClient(config, config.operatorKey);
@@ -73,6 +80,8 @@ export async function createTask(
     "xyz.custodia.mandate": params.mandateHash,
     "xyz.custodia.agent": params.agent,
     "xyz.custodia.status": "active",
+    "xyz.custodia.chart": params.chart ?? "",
+    "xyz.custodia.ui": params.ui ?? "",
   };
   const calls = TASK_TEXT_KEYS.map((key) =>
     encodeFunctionData({

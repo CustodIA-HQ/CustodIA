@@ -30,4 +30,6 @@ export const TASK_TEXT_KEYS = [
   "xyz.custodia.mandate",
   "xyz.custodia.agent",
   "xyz.custodia.status",
+  "xyz.custodia.chart",
+  "xyz.custodia.ui",
 ] as const;
