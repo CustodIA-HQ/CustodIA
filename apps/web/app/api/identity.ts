@@ -1,3 +1,5 @@
+import "../env";
+
 import { NotImplementedError } from "@custodia/schema";
 import { createPublicClient, getAddress, http, isAddress } from "viem";
 import { privateKeyToAccount } from "viem/accounts";

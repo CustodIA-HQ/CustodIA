@@ -1,4 +1,6 @@
-import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import "../../env";
+
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { NotImplementedError } from "@custodia/schema";
 import { verifyMessage } from "viem";
 import { normalizeAddress, type WebAddress } from "../identity";
@@ -15,14 +17,6 @@ export interface ConversationSession {
   expiresAt: number;
 }
 
-interface PendingChallenge {
-  address: WebAddress;
-  agent: WebAddress;
-  conversationId: string;
-  message: string;
-  expiresAt: number;
-}
-
 export class AuthError extends Error {
   constructor(message: string) {
     super(message);
@@ -30,53 +24,76 @@ export class AuthError extends Error {
   }
 }
 
-const pendingChallenges = new Map<string, PendingChallenge>();
-
 const secret = (): string => {
   const value = process.env.SESSION_SECRET?.trim();
   if (!value) throw new NotImplementedError("SESSION_SECRET (conversation sessions)");
   return value;
 };
 
-const challengeKey = (conversationId: string, address: WebAddress): string =>
-  `${conversationId}:${address.toLowerCase()}`;
+// Challenges are STATELESS: the nonce is an HMAC over the challenge fields, so
+// any instance can verify a challenge any instance issued. An in-memory map
+// breaks in Next dev (each route is its own module instance) and on serverless
+// (each request may land on a different instance).
+const challengeNonce = (fields: {
+  address: WebAddress;
+  agent: WebAddress;
+  conversationId: string;
+  issuedAt: number;
+  expiresAt: number;
+}): string =>
+  createHmac("sha256", secret())
+    .update(
+      [
+        "challenge",
+        fields.address.toLowerCase(),
+        fields.agent.toLowerCase(),
+        fields.conversationId,
+        String(fields.issuedAt),
+        String(fields.expiresAt),
+      ].join("|"),
+    )
+    .digest("hex")
+    .slice(0, 32);
 
-const removeExpiredChallenges = (now: number): void => {
-  for (const [key, challenge] of pendingChallenges) {
-    if (challenge.expiresAt <= now) pendingChallenges.delete(key);
-  }
-};
+const challengeMessage = (fields: {
+  address: WebAddress;
+  agent: WebAddress;
+  conversationId: string;
+  issuedAt: number;
+  expiresAt: number;
+  nonce: string;
+}): string =>
+  [
+    "CustodIA conversation authorization",
+    "",
+    `Wallet: ${fields.address}`,
+    `Agent: ${fields.agent}`,
+    `Conversation: ${fields.conversationId}`,
+    `Nonce: ${fields.nonce}`,
+    `Issued at: ${new Date(fields.issuedAt).toISOString()}`,
+    `Expires at: ${new Date(fields.expiresAt).toISOString()}`,
+    "",
+    "Sign this message to prove wallet control for this conversation.",
+    "This signature authorizes chat access only; it does not approve a transaction.",
+  ].join("\n");
 
 export const createChallenge = (params: {
   address: WebAddress;
   agent: WebAddress;
   conversationId: string;
 }): { message: string; expiresAt: number } => {
-  const now = Date.now();
-  removeExpiredChallenges(now);
-  const expiresAt = now + CHALLENGE_TTL_MS;
-  const nonce = randomBytes(16).toString("hex");
-  const message = [
-    "CustodIA conversation authorization",
-    "",
-    `Wallet: ${params.address}`,
-    `Agent: ${params.agent}`,
-    `Conversation: ${params.conversationId}`,
-    `Nonce: ${nonce}`,
-    `Issued at: ${new Date(now).toISOString()}`,
-    `Expires at: ${new Date(expiresAt).toISOString()}`,
-    "",
-    "Sign this message to prove wallet control for this conversation.",
-    "This signature authorizes chat access only; it does not approve a transaction.",
-  ].join("\n");
-
-  pendingChallenges.set(challengeKey(params.conversationId, params.address), {
-    ...params,
-    message,
-    expiresAt,
-  });
-  return { message, expiresAt };
+  const issuedAt = Date.now();
+  const expiresAt = issuedAt + CHALLENGE_TTL_MS;
+  const nonce = challengeNonce({ ...params, issuedAt, expiresAt });
+  return { message: challengeMessage({ ...params, issuedAt, expiresAt, nonce }), expiresAt };
 };
+
+const fieldFrom = (message: string, label: string): string | undefined =>
+  message
+    .split("\n")
+    .find((line) => line.startsWith(`${label}: `))
+    ?.slice(label.length + 2)
+    .trim();
 
 const encode = (value: string): string => Buffer.from(value, "utf8").toString("base64url");
 const decode = (value: string): string => Buffer.from(value, "base64url").toString("utf8");
@@ -136,16 +153,39 @@ export const verifyChallenge = async (params: {
   signature: string;
 }): Promise<{ session: ConversationSession; token: string }> => {
   const address = normalizeAddress(params.address);
-  const key = challengeKey(params.conversationId, address);
-  const challenge = pendingChallenges.get(key);
-  if (!challenge || challenge.expiresAt <= Date.now()) {
-    pendingChallenges.delete(key);
+
+  // Re-derive the challenge from the signed message and check every field
+  // against what this server would have issued for this wallet/agent/conversation.
+  const issuedAtRaw = fieldFrom(params.message, "Issued at");
+  const expiresAtRaw = fieldFrom(params.message, "Expires at");
+  const issuedAt = issuedAtRaw ? Date.parse(issuedAtRaw) : Number.NaN;
+  const expiresAt = expiresAtRaw ? Date.parse(expiresAtRaw) : Number.NaN;
+  if (!Number.isFinite(issuedAt) || !Number.isFinite(expiresAt)) {
+    throw new AuthError("The signed message is not a CustodIA challenge.");
+  }
+  if (expiresAt <= Date.now()) {
     throw new AuthError("The conversation signature challenge is missing or expired.");
   }
-  if (challenge.agent.toLowerCase() !== params.agent.toLowerCase()) {
-    throw new AuthError("The conversation was challenged for a different agent.");
-  }
-  if (challenge.message !== params.message) {
+  const expected = challengeMessage({
+    address,
+    agent: params.agent,
+    conversationId: params.conversationId,
+    issuedAt,
+    expiresAt,
+    nonce: challengeNonce({
+      address,
+      agent: params.agent,
+      conversationId: params.conversationId,
+      issuedAt,
+      expiresAt,
+    }),
+  });
+  const providedBytes = Buffer.from(params.message);
+  const expectedBytes = Buffer.from(expected);
+  if (
+    providedBytes.length !== expectedBytes.length ||
+    !timingSafeEqual(providedBytes, expectedBytes)
+  ) {
     throw new AuthError("The signed message does not match the conversation challenge.");
   }
 
@@ -156,12 +196,11 @@ export const verifyChallenge = async (params: {
   });
   if (!valid) throw new AuthError("The wallet signature could not be verified.");
 
-  pendingChallenges.delete(key);
   const now = Date.now();
   const session: ConversationSession = {
     address,
-    agent: challenge.agent,
-    conversationId: challenge.conversationId,
+    agent: params.agent,
+    conversationId: params.conversationId,
     issuedAt: now,
     expiresAt: now + SESSION_TTL_SECONDS * 1_000,
   };
