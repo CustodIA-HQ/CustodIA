@@ -1,0 +1,57 @@
+import { NotImplementedError } from "@custodia/schema";
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { getAgentAddress } from "../../identity";
+import { AuthError, SESSION_COOKIE_NAME, SESSION_TTL_SECONDS, verifyChallenge } from "../session";
+
+const VerifyRequestSchema = z
+  .object({
+    address: z.string().min(1),
+    conversationId: z.string().uuid(),
+    message: z.string().min(1),
+    signature: z.string().regex(/^0x[0-9a-f]+$/i, "expected a hex wallet signature"),
+  })
+  .strict();
+
+export async function POST(request: Request) {
+  let rawBody: unknown;
+  try {
+    rawBody = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Request body must be valid JSON" }, { status: 400 });
+  }
+
+  const parsed = VerifyRequestSchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: `Invalid conversation signature: ${parsed.error.message}` },
+      { status: 400 },
+    );
+  }
+
+  try {
+    const { session, token } = await verifyChallenge({
+      ...parsed.data,
+      agent: getAgentAddress(),
+    });
+    const response = NextResponse.json({
+      authenticated: true,
+      address: session.address,
+      conversationId: session.conversationId,
+      expiresAt: session.expiresAt,
+    });
+    response.cookies.set(SESSION_COOKIE_NAME, token, {
+      httpOnly: true,
+      maxAge: SESSION_TTL_SECONDS,
+      path: "/",
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+    });
+    return response;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not verify the signature";
+    const status =
+      error instanceof NotImplementedError ? 503 : error instanceof AuthError ? 401 : 400;
+    return NextResponse.json({ error: message }, { status });
+  }
+}

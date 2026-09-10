@@ -108,9 +108,21 @@ importers:
 
   apps/web:
     dependencies:
+      '@custodia/agent':
+        specifier: workspace:*
+        version: link:../../packages/agent
+      '@custodia/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@custodia/ens':
+        specifier: workspace:*
+        version: link:../../packages/ens
       '@custodia/schema':
         specifier: workspace:*
         version: link:../../packages/schema
+      dotenv:
+        specifier: ^17.0.0
+        version: 17.4.2
       next:
         specifier: ^15.3.0
         version: 15.5.25(@babel/core@7.29.7(supports-color@8.1.1))(@types/node@24.13.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -120,6 +132,12 @@ importers:
       react-dom:
         specifier: ^19.1.0
         version: 19.2.8(react@19.2.8)
+      viem:
+        specifier: 'catalog:'
+        version: 2.56.3(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.5.4)
+      zod:
+        specifier: 'catalog:'
+        version: 4.5.4
     devDependencies:
       '@types/node':
         specifier: ^24.0.0
@@ -150,7 +168,7 @@ importers:
         version: link:../schema
       openai:
         specifier: ^7.12.0
-        version: 7.12.1(ws@8.21.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.5.4)
+        version: 7.12.1(ws@8.21.3(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.5.4)
       viem:
         specifier: 'catalog:'
         version: 2.56.3(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.5.4)
@@ -11297,9 +11315,9 @@ snapshots:
       is-docker: 2.2.1
       is-wsl: 2.2.0
 
-  openai@7.12.1(ws@8.21.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.5.4):
+  openai@7.12.1(ws@8.21.3(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.5.4):
     optionalDependencies:
-      ws: 8.21.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)
+      ws: 8.21.3(bufferutil@4.1.0)(utf-8-validate@5.0.10)
       zod: 4.5.4
 
   openapi-fetch@0.13.8:

@@ -1,4 +1,5 @@
 import Image from "next/image";
+import ChatSection from "./chat-section";
 
 export default function Home() {
   return (
@@ -37,15 +38,20 @@ export default function Home() {
         >
           CustodIA
         </span>
-        <span
-          style={{
-            fontSize: 12,
-            color: "rgba(226,240,255,0.35)",
-            letterSpacing: "0.05em",
-          }}
-        >
-          ETHOnline 2026
-        </span>
+        <div className="nav-meta">
+          <a className="nav-chat-link" href="#chat">
+            Open chat
+          </a>
+          <span
+            style={{
+              fontSize: 12,
+              color: "rgba(226,240,255,0.35)",
+              letterSpacing: "0.05em",
+            }}
+          >
+            ETHOnline 2026
+          </span>
+        </div>
       </nav>
 
       {/* ── Hero Image ── */}
@@ -149,7 +155,7 @@ export default function Home() {
               flexShrink: 0,
             }}
           />
-          Scaffold booting — chat UI lands in step 7 of the build order
+          Chat surface ready — agent route is live
         </div>
 
         {/* ── Sponsor cards ── */}
@@ -191,6 +197,8 @@ export default function Home() {
           ))}
         </div>
       </div>
+
+      <ChatSection />
 
       {/* ── Footer ── */}
       <div

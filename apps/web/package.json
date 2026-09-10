@@ -11,10 +11,16 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@custodia/agent": "workspace:*",
+    "@custodia/db": "workspace:*",
+    "@custodia/ens": "workspace:*",
     "@custodia/schema": "workspace:*",
+    "dotenv": "^17.0.0",
     "next": "^15.3.0",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "viem": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
