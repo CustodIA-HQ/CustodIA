@@ -27,8 +27,9 @@ export const AGENT0_SEPOLIA_SUBGRAPH_ID = "6wQRC7geo9XYAhckfmfo8kbMRLeWU8KQd3XsJ
 export const UNISWAP_V3_POOL_USDC_WETH_005 = "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640";
 export const UNISWAP_V3_POOL_EXPECTED_NAME = "Uniswap V3 USD Coin/Wrapped Ether 0.05%";
 
-/** Hours of snapshots requested; a few extra guard against a missing hour. */
-const SNAPSHOT_HOURS = 30;
+/** Seven days of hourly snapshots plus a few extra to guard against a gap. */
+const CHART_HOURS = 7 * 24;
+const SNAPSHOT_HOURS = CHART_HOURS + 12;
 const REQUIRED_HOURS = 24;
 
 // Messari hourly snapshots carry no close price, but they do carry the pool's
@@ -179,7 +180,7 @@ export async function getMarketContext(
             },
           ],
     )
-    .slice(-REQUIRED_HOURS);
+    .slice(-CHART_HOURS);
   if (hourly.length < REQUIRED_HOURS) {
     throw new Error(`only ${hourly.length} hourly snapshots with a tick; need ${REQUIRED_HOURS}`);
   }
@@ -187,7 +188,9 @@ export async function getMarketContext(
   const market: MarketContext = {
     pair,
     priceUsd,
-    realizedVol24hPct: realizedVolPct(hourly.map((h) => h.close)),
+    // The chart keeps up to seven days of points, while risk volatility stays
+    // explicitly on the promised 24-hour window.
+    realizedVol24hPct: realizedVolPct(hourly.slice(-REQUIRED_HOURS).map((h) => h.close)),
     tvlUsd,
     hourly,
     block: _meta.block.number,
