@@ -15,6 +15,8 @@ export type ReasoningEffort = (typeof REASONING_EFFORTS)[number];
  * ($0.20 / $1.20 per 1M tokens). The loop is a rigid three-step, strict-schema
  * task, which is what this tier is built for. Override with OPENAI_MODEL
  * (e.g. gpt-5.6-terra for a demo recording) without a code change.
+ * Function tools on Luna require reasoning_effort="none"; loadAgentEnv
+ * normalizes that combination so a stale local override cannot break chat.
  */
 const DEFAULT_MODEL = "gpt-5.6-luna";
 
@@ -33,10 +35,12 @@ export const loadAgentEnv = (env: NodeJS.ProcessEnv = process.env): AgentEnv => 
       `OPENAI_REASONING_EFFORT="${effort}" is not one of ${REASONING_EFFORTS.join(", ")}`,
     );
   }
+  const openaiModel = env.OPENAI_MODEL?.trim() || DEFAULT_MODEL;
   return {
     openaiApiKey,
-    openaiModel: env.OPENAI_MODEL?.trim() || DEFAULT_MODEL,
-    reasoningEffort: effort as ReasoningEffort | undefined,
+    openaiModel,
+    reasoningEffort:
+      openaiModel === DEFAULT_MODEL ? "none" : (effort as ReasoningEffort | undefined),
     riskApiUrl: env.RISK_API_URL ?? "http://localhost:8402",
   };
 };

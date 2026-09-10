@@ -1,6 +1,7 @@
 import type { MarketCache } from "@custodia/db";
 import {
   type Address,
+  type MarketContext,
   type Receipt,
   type RiskContext,
   type UISpec,
@@ -35,6 +36,7 @@ export interface RunAgentOptions {
 }
 
 export interface RunAgentResult {
+  market: MarketContext | null;
   uiSpec: UISpec | null;
   receipts: Receipt[];
   rationale: string;
@@ -86,6 +88,7 @@ export async function runAgent(options: RunAgentOptions): Promise<RunAgentResult
   const client = new OpenAI({ apiKey: env.openaiApiKey });
 
   const receipts: Receipt[] = [];
+  let market: MarketContext | null = null;
   let uiSpec: UISpec | null = null;
   let rationale = "";
   let risk: RiskContext | null = null;
@@ -101,7 +104,9 @@ export async function runAgent(options: RunAgentOptions): Promise<RunAgentResult
       options.onEvent({ type: "tool", name: "get_market_context", input });
       // Tools return strings — the model reads them as text, and JSON keeps
       // the numbers parseable for its reasoning.
-      return JSON.stringify(await getMarketContextTool(input, options.cache));
+      const context = await getMarketContextTool(input, options.cache);
+      market = context;
+      return JSON.stringify(context);
     },
   });
 
@@ -202,8 +207,8 @@ export async function runAgent(options: RunAgentOptions): Promise<RunAgentResult
   const runner = client.chat.completions.runTools(
     {
       model: env.openaiModel,
-      // Unset → the API default (medium). "low" is the sensible setting for
-      // Luna on this rigid loop; raise it only if the rationale quality drops.
+      // Luna's function-tool endpoint accepts only reasoning_effort="none";
+      // loadAgentEnv normalizes the default model to that compatible value.
       ...(env.reasoningEffort ? { reasoning_effort: env.reasoningEffort } : {}),
       stream: true,
       messages: [{ role: "system", content: SYSTEM_PROMPT }, ...options.messages],
@@ -215,7 +220,7 @@ export async function runAgent(options: RunAgentOptions): Promise<RunAgentResult
   runner.on("content", (delta) => options.onEvent({ type: "text", delta }));
   await runner.finalContent();
 
-  return { uiSpec, receipts, rationale };
+  return { market, uiSpec, receipts, rationale };
 }
 
 export { type PaidFetchResult, PaymentError, paidFetch } from "./x402.js";

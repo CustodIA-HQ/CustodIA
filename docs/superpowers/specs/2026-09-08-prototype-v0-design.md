@@ -190,7 +190,7 @@ TaskStatus    = 'active'|'needs-human'|'completed'|'revoked'
   tuples/lazy refs in `ComponentSchema`, so components cross as a JSON string — same gate, different transport.
   The platform appends the authoritative `risk_summary` (server risk numbers + x402 receipt) itself.
 - Model from `OPENAI_MODEL` (default `gpt-5.6-luna` — cheapest tier, built for rigid structured loops; `gpt-5.6-terra`
-  for a demo recording if rationale quality matters more). Optional `OPENAI_REASONING_EFFORT` (`low` recommended for Luna).
+  for a demo recording if rationale quality matters more). Optional `OPENAI_REASONING_EFFORT` (`none` is required for Luna function tools; `low` is available for Terra).
   `maxChatCompletions: 8` bounds the loop. Streaming; `runner.on("content")` forwards text deltas and the tool
   callbacks forward tool events to `onEvent` for the SSE route.
 - System prompt as a real `role: "system"` message: role, the three-step order (market → paid risk → UI), the

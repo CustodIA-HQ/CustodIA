@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Receipt } from "@custodia/schema";
@@ -29,11 +30,17 @@ export class PaymentError extends Error {
   }
 }
 
-// The signer process lives at apps/signer/x402-sign.ts (workspace root).
-const SIGNER_PATH = resolve(
-  dirname(fileURLToPath(import.meta.url)),
-  "../../../apps/signer/x402-sign.ts",
-);
+// The signer process lives at apps/signer/x402-sign.ts (workspace root). The
+// cwd candidates are needed when this package is bundled into a Next route;
+// import.meta.url then points inside .next instead of the workspace source.
+const signerCandidates = [
+  process.env.SIGNER_PATH,
+  resolve(process.cwd(), "apps/signer/x402-sign.ts"),
+  resolve(process.cwd(), "../../apps/signer/x402-sign.ts"),
+  resolve(dirname(fileURLToPath(import.meta.url)), "../../../apps/signer/x402-sign.ts"),
+].filter((path): path is string => Boolean(path));
+const SIGNER_PATH = signerCandidates.find(existsSync) ?? signerCandidates.at(-1);
+if (!SIGNER_PATH) throw new Error("apps/signer/x402-sign.ts could not be located");
 const SIGNER_RUNNER = process.env.SIGNER_RUNNER ?? "node"; // node >= 22.18 strips types natively
 
 const decodeHeader = <T>(header: string | null): T | undefined => {

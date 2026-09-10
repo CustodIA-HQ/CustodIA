@@ -12,4 +12,21 @@ describe("agent model configuration", () => {
       loadAgentEnv({ OPENAI_API_KEY: "test", OPENAI_MODEL: " configured-model " }).openaiModel,
     ).toBe("configured-model");
   });
+  it("disables reasoning effort for Luna function tools", () => {
+    expect(
+      loadAgentEnv({
+        OPENAI_API_KEY: "test",
+        OPENAI_REASONING_EFFORT: "low",
+      }).reasoningEffort,
+    ).toBe("none");
+  });
+  it("keeps the configured effort for other models", () => {
+    expect(
+      loadAgentEnv({
+        OPENAI_API_KEY: "test",
+        OPENAI_MODEL: "gpt-5.6-terra",
+        OPENAI_REASONING_EFFORT: "low",
+      }).reasoningEffort,
+    ).toBe("low");
+  });
 });
