@@ -53,3 +53,23 @@ it("verifies a wallet challenge and rejects tampered or foreign ones", async () 
     }),
   ).rejects.toThrow("does not match");
 });
+
+it("rejects a replayed challenge when the store has consumed it", async () => {
+  vi.stubEnv("SESSION_SECRET", "test-session-secret");
+  const seen = new Set<string>();
+  const store = {
+    consume: async (nonce: string) => (seen.has(nonce) ? false : (seen.add(nonce), true)),
+  };
+  const challenge = createChallenge({ address: account.address, agent, conversationId });
+  const signature = await account.signMessage({ message: challenge.message });
+  const params = {
+    address: account.address,
+    agent,
+    conversationId,
+    message: challenge.message,
+    signature,
+    store,
+  };
+  await expect(verifyChallenge(params)).resolves.toBeTruthy();
+  await expect(verifyChallenge(params)).rejects.toThrow("already been used");
+});

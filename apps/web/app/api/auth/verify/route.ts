@@ -1,8 +1,15 @@
+import { createDb, PostgresChallengeStore } from "@custodia/db";
 import { NotImplementedError } from "@custodia/schema";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getAgentAddress } from "../../identity";
 import { AuthError, SESSION_COOKIE_NAME, SESSION_TTL_SECONDS, verifyChallenge } from "../session";
+
+let challengeStore: PostgresChallengeStore | undefined;
+const getChallengeStore = (): PostgresChallengeStore => {
+  challengeStore ??= new PostgresChallengeStore(createDb() as never);
+  return challengeStore;
+};
 
 const VerifyRequestSchema = z
   .object({
@@ -33,6 +40,7 @@ export async function POST(request: Request) {
     const { session, token } = await verifyChallenge({
       ...parsed.data,
       agent: getAgentAddress(),
+      store: getChallengeStore(),
     });
     const response = NextResponse.json({
       authenticated: true,
