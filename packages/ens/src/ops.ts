@@ -69,6 +69,8 @@ export async function createTask(
     mandateHash: `0x${string}`;
     owner: `0x${string}`;
     agent: `0x${string}`;
+    /** Lifecycle status to publish; defaults to `draft` (no mandate yet). */
+    status?: TaskStatus;
   } & TaskRecords,
 ): Promise<CreateTaskResult> {
   const name = `${params.taskId}.${params.userLabel}.${config.parentName}`;
@@ -79,7 +81,7 @@ export async function createTask(
     "xyz.custodia.owner": params.owner,
     "xyz.custodia.mandate": params.mandateHash,
     "xyz.custodia.agent": params.agent,
-    "xyz.custodia.status": "active",
+    "xyz.custodia.status": params.status ?? "draft",
     "xyz.custodia.chart": params.chart ?? "",
     "xyz.custodia.ui": params.ui ?? "",
   };

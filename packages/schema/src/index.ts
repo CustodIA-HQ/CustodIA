@@ -180,8 +180,8 @@ export const ReceiptSchema = z.object({
 });
 export type Receipt = z.infer<typeof ReceiptSchema>;
 
-export const TaskStatusSchema = z.enum(["active", "needs-human", "completed", "revoked"]);
-export type TaskStatus = z.infer<typeof TaskStatusSchema>;
+// Task lifecycle v2 (seven states, actor-gated transitions) — see lifecycle.ts
+export * from "./lifecycle.js";
 
 // EIP-712 mandate domain/types + constraintsHash (see mandate712.ts)
 export * from "./mandate712.js";
