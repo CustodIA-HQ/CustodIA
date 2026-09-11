@@ -188,3 +188,7 @@ Hedera x402                 ⚠️  Necesita cuenta portal.hedera.com
 
 *Documento vivo — actualizar a medida que se completen tareas.*
 *Si algo aquí contradice a `QUICKREF.md`, gana `QUICKREF.md` (regla del doc §A).*
+
+## Stage 1 — Foundation: gate passed 2026-09-11
+
+`pnpm verify:durability` — duplicate delivery of one `clientRequestId` yields one run; a job whose worker died mid-lease is stolen and completed on attempt 2. Plan: `docs/superpowers/plans/2026-09-11-stage-1-foundation.md`. Branch `stage-1-foundation` (13 commits).
