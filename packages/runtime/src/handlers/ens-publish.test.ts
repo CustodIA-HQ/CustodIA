@@ -50,14 +50,12 @@ const mandate = {
 };
 
 const seed = async (taskId: string) => {
-  await ctx.db
-    .insert(tables.tasks)
-    .values({
-      id: taskId,
-      userWallet: owner,
-      ensName: `${taskId}.alice.custodia.eth`,
-      status: "awaiting_authorization",
-    });
+  await ctx.db.insert(tables.tasks).values({
+    id: taskId,
+    userWallet: owner,
+    ensName: `${taskId}.alice.custodia.eth`,
+    status: "awaiting_authorization",
+  });
   const [m] = await ctx.db
     .insert(tables.mandates)
     .values({
@@ -68,17 +66,15 @@ const seed = async (taskId: string) => {
       hash: "0xhash",
     })
     .returning({ id: tables.mandates.id });
-  await ctx.db
-    .insert(tables.proposals)
-    .values({
-      id: `p-${taskId}`,
-      runId: "r",
-      taskId,
-      ownerWallet: owner,
-      version: 1,
-      hash: "0xph",
-      body: { market, uiSpec, proposal: { userLabel: "alice" } },
-    });
+  await ctx.db.insert(tables.proposals).values({
+    id: `p-${taskId}`,
+    runId: "r",
+    taskId,
+    ownerWallet: owner,
+    version: 1,
+    hash: "0xph",
+    body: { market, uiSpec, proposal: { userLabel: "alice" } },
+  });
   return { mandateId: m?.id ?? 0, proposalId: `p-${taskId}` };
 };
 const job = (payload: unknown) => ({

@@ -1,5 +1,5 @@
 import { type MarketContext, MarketContextSchema } from "@custodia/schema";
-import { gql, request } from "graphql-request";
+import { GraphQLClient, gql, request } from "graphql-request";
 import { z } from "zod";
 import type { MarketCache } from "./cache.js";
 import { graphEndpoint } from "./config.js";
@@ -31,6 +31,9 @@ export const UNISWAP_V3_POOL_EXPECTED_NAME = "Uniswap V3 USD Coin/Wrapped Ether 
 const CHART_HOURS = 7 * 24;
 const SNAPSHOT_HOURS = CHART_HOURS + 12;
 const REQUIRED_HOURS = 24;
+const GRAPH_REQUEST_TIMEOUT_MS = 15_000;
+const GRAPH_RETRY_DELAY_MS = 250;
+const FALLBACK_SNAPSHOT_HOURS = 48;
 
 // Messari hourly snapshots carry no close price, but they do carry the pool's
 // `tick` at snapshot time — the exact end-of-hour price from pool state.
@@ -120,6 +123,30 @@ const memoryCache: MarketCache = {
   },
 };
 
+const requestMarket = async (url: string, variables: { poolId: string; hours: number }) => {
+  let lastError: unknown;
+  const queries = [variables.hours, FALLBACK_SNAPSHOT_HOURS];
+  for (const hours of queries) {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), GRAPH_REQUEST_TIMEOUT_MS);
+      try {
+        const client = new GraphQLClient(url, {
+          fetch: (input, init) => fetch(input, { ...init, signal: controller.signal }),
+        });
+        return await client.request(MARKET_QUERY, { ...variables, hours });
+      } catch (error) {
+        lastError = error;
+        if (attempt === 0)
+          await new Promise((resolve) => setTimeout(resolve, GRAPH_RETRY_DELAY_MS));
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("The Graph market request failed");
+};
+
 export interface GetMarketContextOptions {
   cache?: MarketCache;
   ttlS?: number;
@@ -137,7 +164,7 @@ export async function getMarketContext(
   if (fresh) return fresh;
 
   const url = graphEndpoint(UNISWAP_V3_ETH_SUBGRAPH_ID);
-  const raw = await request(url, MARKET_QUERY, {
+  const raw = await requestMarket(url, {
     poolId: UNISWAP_V3_POOL_USDC_WETH_005,
     hours: SNAPSHOT_HOURS,
   });

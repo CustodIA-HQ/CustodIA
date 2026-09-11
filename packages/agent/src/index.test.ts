@@ -2,13 +2,19 @@ import type { MarketCache } from "@custodia/db";
 import { UISpecSchema } from "@custodia/schema";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ runTools: vi.fn(), market: vi.fn(), pay: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  runTools: vi.fn(),
+  market: vi.fn(),
+  pay: vi.fn(),
+  portfolio: vi.fn(),
+}));
 vi.mock("openai", () => ({
   default: class {
     chat = { completions: { runTools: mocks.runTools } };
   },
 }));
 vi.mock("@custodia/graph", () => ({ getMarketContext: mocks.market }));
+vi.mock("./portfolio.js", () => ({ readPortfolio: mocks.portfolio }));
 vi.mock("./x402.js", () => ({ paidFetch: mocks.pay, PaymentError: Error }));
 
 import { runAgent } from "./index.js";
@@ -54,7 +60,8 @@ function simulate(
 beforeEach(() => {
   vi.clearAllMocks();
   vi.stubEnv("OPENAI_API_KEY", "test");
-  mocks.market.mockResolvedValue({ pair: "ETH/USDC", price: 2000 });
+  mocks.portfolio.mockResolvedValue({ eth: "3", usdc: "4000" });
+  mocks.market.mockResolvedValue({ pair: "ETH/USDC", priceUsd: 2000 });
   mocks.pay.mockResolvedValue({
     data: risk,
     receipt: {
@@ -83,6 +90,7 @@ it("clips model bounds and replaces fabricated risk data with the paid context",
 });
 it("does not pay again when the model repeats its risk tool call", async () => {
   simulate(async (call) => {
+    await call("get_market_context", { pair: "ETH/USDC" });
     await call("paid_risk_request", request);
     expect(await call("paid_risk_request", request)).toContain("Denied");
   });
@@ -94,5 +102,31 @@ it("rejects UI emission before a paid context exists", async () => {
     await call("emit_ui_spec", emit);
   });
   await expect(runAgent(options)).rejects.toThrow("before a paid risk context");
+  expect(mocks.pay).not.toHaveBeenCalled();
+});
+
+it("uses verified holdings instead of model-invented risk inputs", async () => {
+  simulate(async (call) => {
+    await call("get_market_context", { pair: "ETH/USDC" });
+    await call("paid_risk_request", { assets: ["ETH"], sizeUsd: 999999, allocationPct: [100] });
+  });
+  await runAgent(options);
+  expect(mocks.portfolio).toHaveBeenCalledWith(address);
+  expect(mocks.pay).toHaveBeenCalledWith(expect.any(String), { json: request });
+});
+it("does not pay for risk when supported balances are empty", async () => {
+  mocks.portfolio.mockResolvedValue({ eth: "0", usdc: "0" });
+  simulate(async (call) => {
+    await call("get_market_context", { pair: "ETH/USDC" });
+    expect(await call("paid_risk_request", request)).toContain("no supported holdings");
+  });
+  await runAgent(options);
+  expect(mocks.pay).not.toHaveBeenCalled();
+});
+
+it("stops before model calls or payments when wallet inspection fails", async () => {
+  mocks.portfolio.mockRejectedValue(new Error("Wallet RPC unavailable"));
+  await expect(runAgent(options)).rejects.toThrow("Wallet RPC unavailable");
+  expect(mocks.runTools).not.toHaveBeenCalled();
   expect(mocks.pay).not.toHaveBeenCalled();
 });

@@ -12,6 +12,7 @@ import { zodFunction } from "openai/helpers/zod";
 import { z } from "zod";
 import { clipUISpec } from "./clipper.js";
 import { loadAgentEnv } from "./config.js";
+import { readPortfolio } from "./portfolio.js";
 import { getMarketContextTool, makePreflightMandate, paidRiskRequestTool } from "./tools.js";
 import { paidFetch } from "./x402.js";
 
@@ -61,7 +62,10 @@ const emitToolSchema = z.object({
 
 const SYSTEM_PROMPT = [
   "You are the CustodIA portfolio guard agent. Work in exactly this order:",
-  "1) get_market_context, 2) paid_risk_request, 3) emit_ui_spec.",
+  "First evaluate the verified wallet snapshot supplied below. For a holdings question, summarize the actual balances and scope and stop; do not buy a risk assessment or generate a guard unless requested. For a guard request use get_market_context, paid_risk_request, then emit_ui_spec.",
+  "This is a Sepolia testnet application. Holdings are test tokens with no real monetary value. Any USD valuation or risk envelope is a simulation using mainnet market reference prices, never actual test-token worth. State this distinction in recommendations. ENS uses Sepolia and risk payments use Hedera testnet.",
+  "Chat must be suitable for WhatsApp and Telegram: concise plain text, simple lists and links only. Never claim interactive charts, sliders or signing forms are shown in chat. Those belong on the separate guard page. Never call a market chart portfolio history.",
+  "Base recommendations on observed holdings; distinguish current allocation from proposed changes. Do not assume 50/50 or use the ETH unit price as portfolio value. USDC valuation is an explicit $1 assumption. If holdings are empty or unavailable, explain the limitation and ask which assets or chain to inspect; never invent a portfolio.",
   "Never invent numbers — every bound you place on the UI must come from the risk context.",
   "If a tool is denied by policy, say so to the user and stop.",
   "",
@@ -87,6 +91,9 @@ export async function runAgent(options: RunAgentOptions): Promise<RunAgentResult
   const env = loadAgentEnv();
   const client = new OpenAI({ apiKey: env.openaiApiKey });
 
+  options.onEvent({ type: "tool", name: "read_portfolio", input: { owner: options.owner } });
+  const portfolio = await readPortfolio(options.owner);
+  options.onEvent({ type: "tool", name: "read_portfolio", output: portfolio });
   const receipts: Receipt[] = [];
   let market: MarketContext | null = null;
   let uiSpec: UISpec | null = null;
@@ -118,6 +125,18 @@ export async function runAgent(options: RunAgentOptions): Promise<RunAgentResult
     function: async (input) => {
       options.onEvent({ type: "tool", name: "paid_risk_request", input });
       if (riskPaymentAttempted) return "Denied: a risk payment was already attempted this turn.";
+      if (!market) throw new Error("Read market context before evaluating portfolio risk.");
+      const ethUsd = Number(portfolio.eth) * market.priceUsd;
+      const usdcUsd = Number(portfolio.usdc);
+      const totalUsd = ethUsd + usdcUsd;
+      if (!Number.isFinite(totalUsd) || totalUsd <= 0) {
+        return "Denied: no supported holdings to evaluate. Ask which chain or assets to inspect.";
+      }
+      input = {
+        assets: ["ETH", "USDC"],
+        sizeUsd: totalUsd,
+        allocationPct: [(ethUsd / totalUsd) * 100, (usdcUsd / totalUsd) * 100],
+      };
       riskPaymentAttempted = true;
       const result = await paidRiskRequestTool(input, {
         mandate: makePreflightMandate(options.agent, options.owner),
@@ -211,7 +230,13 @@ export async function runAgent(options: RunAgentOptions): Promise<RunAgentResult
       // loadAgentEnv normalizes the default model to that compatible value.
       ...(env.reasoningEffort ? { reasoning_effort: env.reasoningEffort } : {}),
       stream: true,
-      messages: [{ role: "system", content: SYSTEM_PROMPT }, ...options.messages],
+      messages: [
+        {
+          role: "system",
+          content: `${SYSTEM_PROMPT}\nVerified wallet snapshot: ${JSON.stringify(portfolio)}`,
+        },
+        ...options.messages,
+      ],
       tools: [marketTool, riskTool, emitTool],
     },
     { maxChatCompletions: MAX_CHAT_COMPLETIONS },
