@@ -1,16 +1,18 @@
 import "../../env";
 
-import { createTask, loadEnsConfig } from "@custodia/ens";
+import { createDb, tables } from "@custodia/db";
+import { loadEnsConfig } from "@custodia/ens";
+import { enqueueJob, loadProposal } from "@custodia/runtime";
 import {
   constraintsHash,
   MANDATE_DOMAIN,
   MANDATE_TYPES,
   MandateSchema,
   type MandateTypedMessage,
-  MarketContextSchema,
   mandateDigest,
-  UISpecSchema,
+  type UISpec,
 } from "@custodia/schema";
+import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { verifyTypedData } from "viem";
 import { z } from "zod";
@@ -19,33 +21,16 @@ import { getAgentAddress } from "../identity";
 
 const MAX_MANDATE_SECONDS = 30 * 24 * 60 * 60;
 
+// Strict: market data / UI in the body are rejected outright. The only
+// evidence a mandate may bind to is the server-side proposal it references.
 const MandateRequestSchema = z
   .object({
     conversationId: z.string().uuid(),
+    proposalId: z.string().uuid(),
     mandate: MandateSchema,
     signature: z.string().regex(/^0x[0-9a-f]+$/i, "expected a hex typed-data signature"),
-    market: MarketContextSchema,
-    uiSpec: UISpecSchema,
   })
   .strict();
-
-const userLabelFromName = (name: string, taskId: string, parentName: string): string => {
-  const suffix = `.${parentName.toLowerCase()}`;
-  const lowerName = name.toLowerCase();
-  if (!lowerName.endsWith(suffix)) {
-    throw new Error("The ENS name is outside the configured CustodIA parent");
-  }
-
-  const relative = lowerName.slice(0, -suffix.length).split(".");
-  if (
-    relative.length !== 2 ||
-    relative[0] !== taskId ||
-    !/^[a-z0-9-]{1,63}$/.test(relative[1] ?? "")
-  ) {
-    throw new Error("The ENS name must be task-id.user-label under the configured parent");
-  }
-  return relative[1] as string;
-};
 
 const typedMessage = (mandate: z.infer<typeof MandateSchema>): MandateTypedMessage => ({
   kind: mandate.kind,
@@ -58,24 +43,23 @@ const typedMessage = (mandate: z.infer<typeof MandateSchema>): MandateTypedMessa
   exp: BigInt(mandate.exp),
 });
 
-const chartPayload = (
-  market: z.infer<typeof MarketContextSchema>,
-  uiSpec: z.infer<typeof UISpecSchema>,
-): string => {
-  const chart = uiSpec.components.find((component) => component.type === "price_chart");
-  if (chart?.type !== "price_chart") {
-    throw new Error("The accepted UI spec does not contain a price chart");
-  }
-  return JSON.stringify({
-    schema: "custodia.chart.1",
-    source: "The Graph",
-    pair: market.pair,
-    range: chart.range,
-    fetchedAt: market.fetchedAt,
-    points: market.hourly,
-  });
+/** The numeric ceilings the agent proposed (already clipped to the risk context). */
+const boundsFrom = (spec: UISpec) => ({
+  drawdownMax: spec.components.find((c) => c.type === "range_slider")?.max ?? 0,
+  tradeMax: spec.components.find((c) => c.type === "amount_selector")?.max ?? 0,
+});
+
+let db: ReturnType<typeof createDb> | undefined;
+const getDb = () => {
+  db ??= createDb();
+  return db;
 };
 
+/**
+ * POST /api/mandate — verifies the owner's EIP-712 mandate against the stored
+ * proposal, appends the mandate (never updates), moves the task to
+ * awaiting_authorization and enqueues ENS publication. 202 { taskId, jobId }.
+ */
 export async function POST(request: Request) {
   let rawBody: unknown;
   try {
@@ -83,11 +67,10 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: "Request body must be valid JSON" }, { status: 400 });
   }
-
   const parsed = MandateRequestSchema.safeParse(rawBody);
   if (!parsed.success) {
     return NextResponse.json(
-      { error: `Invalid ENS guard request: ${parsed.error.message}` },
+      { error: `Invalid mandate request: ${parsed.error.message}` },
       { status: 400 },
     );
   }
@@ -96,11 +79,10 @@ export async function POST(request: Request) {
     const session = sessionForRequest(request, parsed.data.conversationId);
     if (!session) {
       return NextResponse.json(
-        { error: "Sign this conversation before publishing an ENS guard." },
+        { error: "Sign this conversation before authorizing a task." },
         { status: 401 },
       );
     }
-
     const config = loadEnsConfig();
     const mandate = parsed.data.mandate;
     if (mandate.owner.toLowerCase() !== session.address.toLowerCase()) {
@@ -109,19 +91,15 @@ export async function POST(request: Request) {
         { status: 401 },
       );
     }
-    if (mandate.agent.toLowerCase() !== config.agentAddress.toLowerCase()) {
+    if (
+      mandate.agent.toLowerCase() !== config.agentAddress.toLowerCase() ||
+      getAgentAddress().toLowerCase() !== config.agentAddress.toLowerCase()
+    ) {
       return NextResponse.json(
         { error: "The mandate names an unconfigured agent." },
         { status: 400 },
       );
     }
-    if (getAgentAddress().toLowerCase() !== config.agentAddress.toLowerCase()) {
-      return NextResponse.json(
-        { error: "The configured agent identity is inconsistent." },
-        { status: 503 },
-      );
-    }
-
     const now = Math.floor(Date.now() / 1_000);
     if (
       mandate.iat > now + 60 ||
@@ -133,14 +111,12 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
-
-    const message = typedMessage(mandate);
     const verified = await verifyTypedData({
       address: mandate.owner,
       domain: MANDATE_DOMAIN,
       types: MANDATE_TYPES,
       primaryType: "Mandate",
-      message,
+      message: typedMessage(mandate),
       signature: parsed.data.signature as `0x${string}`,
     });
     if (!verified) {
@@ -150,26 +126,57 @@ export async function POST(request: Request) {
       );
     }
 
-    const userLabel = userLabelFromName(mandate.ens, mandate.taskId, config.parentName);
-    const created = await createTask(config, {
-      userLabel,
-      taskId: mandate.taskId,
-      mandateHash: mandateDigest(mandate),
-      owner: mandate.owner,
-      agent: mandate.agent,
-      chart: chartPayload(parsed.data.market, parsed.data.uiSpec),
-      ui: JSON.stringify(parsed.data.uiSpec),
-    });
+    // Bind to the immutable server-side proposal.
+    const proposal = await loadProposal(getDb(), parsed.data.proposalId);
+    if (!proposal || proposal.ownerWallet.toLowerCase() !== session.address.toLowerCase()) {
+      return NextResponse.json({ error: "Unknown proposal." }, { status: 404 });
+    }
+    const body = proposal.body as { uiSpec: UISpec; proposal: { taskId: string; ensName: string } };
+    if (mandate.taskId !== body.proposal.taskId || mandate.ens !== body.proposal.ensName) {
+      return NextResponse.json(
+        { error: "The mandate does not match the proposal." },
+        { status: 400 },
+      );
+    }
+    const bounds = boundsFrom(body.uiSpec);
+    const drawdown = mandate.constraints.find((c) => c.type === "custodia.max_drawdown_pct.1");
+    const trade = mandate.constraints.find((c) => c.type === "custodia.max_trade_usd.1");
+    if (
+      (drawdown && drawdown.value > bounds.drawdownMax) ||
+      (trade && trade.value > bounds.tradeMax)
+    ) {
+      return NextResponse.json(
+        { error: "Mandate limits are outside the proposal bounds." },
+        { status: 400 },
+      );
+    }
 
-    return NextResponse.json({
-      name: created.name,
-      taskId: mandate.taskId,
-      mandateHash: mandateDigest(mandate),
-      recordsTxId: created.recordsTxId,
-      delegationTxId: created.txId,
+    const mandateHash = mandateDigest(mandate);
+    const [row] = await getDb()
+      .insert(tables.mandates)
+      .values({
+        taskId: mandate.taskId,
+        version: 1,
+        typedData: mandate,
+        signature: parsed.data.signature,
+        hash: mandateHash,
+      })
+      .returning({ id: tables.mandates.id });
+    await getDb()
+      .update(tables.tasks)
+      .set({ status: "awaiting_authorization" })
+      .where(eq(tables.tasks.id, mandate.taskId));
+    const { jobId } = await enqueueJob(getDb(), {
+      kind: "ens.publish",
+      payload: { taskId: mandate.taskId, mandateId: row?.id, proposalId: proposal.id },
+      dedupeKey: `ens.publish:${mandate.taskId}`,
     });
+    return NextResponse.json(
+      { taskId: mandate.taskId, ensName: mandate.ens, mandateHash, jobId },
+      { status: 202 },
+    );
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Could not publish the ENS guard";
+    const message = error instanceof Error ? error.message : "Could not authorize the task";
     const status = message.startsWith("Not implemented:") ? 503 : 502;
     console.error(`[mandate] ${message}`);
     return NextResponse.json({ error: message }, { status });

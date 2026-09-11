@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 import { createPooledDb } from "@custodia/db";
-import { chatHandler, HandlerRegistry, tick } from "@custodia/runtime";
+import { chatHandler, ensPublishHandler, HandlerRegistry, tick } from "@custodia/runtime";
 import dotenv from "dotenv";
 
 // The worker runs from apps/worker; secrets live in the repository root.
@@ -10,7 +10,9 @@ const workerId = `${process.env.HOSTNAME ?? "local"}-${process.pid}`;
 const IDLE_MS = 1_000;
 
 const db = createPooledDb();
-const registry = new HandlerRegistry().register("chat.run", chatHandler);
+const registry = new HandlerRegistry()
+  .register("chat.run", chatHandler)
+  .register("ens.publish", ensPublishHandler);
 
 let stopping = false;
 for (const signal of ["SIGINT", "SIGTERM"] as const) {

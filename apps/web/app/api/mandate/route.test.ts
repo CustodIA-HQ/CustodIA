@@ -1,114 +1,91 @@
-import {
-  constraintsHash,
-  MANDATE_DOMAIN,
-  MANDATE_TYPES,
-  type MarketContext,
-  type UISpec,
-} from "@custodia/schema";
+import { constraintsHash, MANDATE_DOMAIN, MANDATE_TYPES } from "@custodia/schema";
 import { privateKeyToAccount } from "viem/accounts";
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
+
+const owner = privateKeyToAccount(`0x${"11".repeat(32)}`);
+const agent = "0x1111111111111111111111111111111111111111" as const;
+const conversationId = "00000000-0000-4000-8000-000000000001";
+const proposalId = "00000000-0000-4000-8000-00000000aaaa";
 
 const mocks = vi.hoisted(() => ({
+  loadProposal: vi.fn(),
+  enqueueJob: vi.fn(async () => ({ jobId: 9, created: true })),
   createTask: vi.fn(),
-  loadEnsConfig: vi.fn(),
+  inserted: [] as unknown[],
 }));
-
+vi.mock("@custodia/runtime", () => ({
+  loadProposal: mocks.loadProposal,
+  enqueueJob: mocks.enqueueJob,
+}));
 vi.mock("@custodia/ens", () => ({
   createTask: mocks.createTask,
-  loadEnsConfig: mocks.loadEnsConfig,
+  loadEnsConfig: () => ({
+    parentName: "custodia.eth",
+    agentAddress: "0x1111111111111111111111111111111111111111",
+  }),
+}));
+vi.mock("@custodia/db", () => ({
+  createDb: () => ({
+    insert: () => ({
+      values: (v: unknown) => {
+        mocks.inserted.push(v);
+        return { returning: async () => [{ id: 7 }] };
+      },
+    }),
+    update: () => ({ set: () => ({ where: async () => undefined }) }),
+  }),
+  tables: { mandates: {}, tasks: { id: "id" } },
+}));
+vi.mock("../identity", () => ({
+  getAgentAddress: () => "0x1111111111111111111111111111111111111111",
 }));
 
 import { createSessionToken, SESSION_COOKIE_NAME } from "../auth/session";
 import { POST } from "./route";
 
-const owner = privateKeyToAccount(`0x${"11".repeat(32)}`);
-const agent = privateKeyToAccount(`0x${"22".repeat(32)}`);
-const conversationId = "00000000-0000-4000-8000-000000000003";
-const agentKey = `0x${"22".repeat(32)}` as `0x${string}`;
-const taskId = "a1b2c3d4";
-const ensName = `${taskId}.wallet-${owner.address.slice(2, 10).toLowerCase()}.custodia.eth`;
-const constraints = [
-  { type: "custodia.allowed_assets.1" as const, assets: ["ETH", "USDC"] },
-  { type: "custodia.max_drawdown_pct.1" as const, value: 4.4 },
-  { type: "custodia.max_trade_usd.1" as const, value: 1_000 },
-  { type: "custodia.allow_rebalance.1" as const, value: false },
-];
-const market: MarketContext = {
-  pair: "ETH/USDC",
-  priceUsd: 2_000,
-  realizedVol24hPct: 2,
-  tvlUsd: 1_000_000,
-  hourly: Array.from({ length: 24 }, (_, index) => ({
-    ts: 1_700_000_000 + index * 3_600,
-    close: 2_000 + index,
-  })),
-  block: 1,
-  fetchedAt: 1_700_000_000_000,
-};
-const uiSpec: UISpec = {
-  intent: "configure_portfolio_guard",
-  components: [
-    { type: "price_chart", pair: "ETH/USDC", range: "7d" },
-    { type: "allocation_selector", assets: ["ETH", "USDC"], defaultPct: [50, 50] },
-    { type: "range_slider", id: "max_drawdown_pct", min: 1.1, max: 4.4, default: 4.4 },
-    { type: "amount_selector", id: "max_trade_usd", min: 0, max: 1_000, default: 1_000 },
-    {
-      type: "permission_toggle",
-      id: "allow_rebalance",
-      default: false,
-      consequence: "Rebalancing remains off.",
-    },
-    {
-      type: "risk_summary",
-      risk: {
-        volatility24hPct: 2,
-        concentrationPct: 50,
-        maxTradeEnvelopeUsd: 1_000,
-        drawdownRange: [1.1, 4.4],
-        explanation: "Fixture risk.",
-      },
-      receiptTxId: "fixture-receipt",
-    },
-  ],
-  rationale: "Fixture guard.",
-};
-
-beforeEach(() => {
-  vi.stubEnv("SESSION_SECRET", "test-session-secret");
-  vi.stubEnv("AGENT_PRIVATE_KEY", agentKey);
-  mocks.loadEnsConfig.mockReturnValue({
-    rpcUrl: "https://example.invalid",
-    parentName: "custodia.eth",
-    resolverAddress: `0x${"33".repeat(20)}`,
-    operatorKey: `0x${"44".repeat(32)}`,
-    agentKey,
-    operatorAddress: `0x${"44".repeat(20)}`,
-    agentAddress: agent.address,
-  });
-  mocks.createTask.mockResolvedValue({
-    name: ensName,
-    recordsTxId: `0x${"55".repeat(32)}`,
-    txId: `0x${"66".repeat(32)}`,
-  });
-});
-
 afterEach(() => {
   vi.clearAllMocks();
   vi.unstubAllEnvs();
+  mocks.inserted.length = 0;
 });
 
-it("verifies the signed mandate and sends the chart payload to ENS", async () => {
-  const iat = Math.floor(Date.now() / 1_000);
-  const exp = iat + 60 * 60;
+const cookie = () => {
+  vi.stubEnv("SESSION_SECRET", "test-session-secret");
+  return `${SESSION_COOKIE_NAME}=${createSessionToken({ address: owner.address, agent, conversationId, issuedAt: Date.now(), expiresAt: Date.now() + 60_000 })}`;
+};
+const uiSpec = {
+  intent: "configure_portfolio_guard",
+  components: [
+    { type: "price_chart", pair: "ETH/USDC", range: "24h" },
+    { type: "range_slider", id: "max_drawdown_pct", min: 1.4, max: 5.4, default: 3 },
+    { type: "amount_selector", id: "max_trade_usd", min: 0, max: 10000, default: 5000 },
+  ],
+  rationale: "r",
+};
+const proposalRow = () => ({
+  id: proposalId,
+  runId: "run-1",
+  taskId: "abcd1234",
+  ownerWallet: owner.address,
+  version: 1,
+  hash: "0xph",
+  body: {
+    market: { pair: "ETH/USDC" },
+    uiSpec,
+    proposal: { taskId: "abcd1234", ensName: "abcd1234.alice.custodia.eth", userLabel: "alice" },
+  },
+});
+const signedMandate = async (constraints: unknown[]) => {
+  const iat = Math.floor(Date.now() / 1000);
   const mandate = {
-    kind: "custodia.mandate.task.1" as const,
-    taskId,
+    kind: "custodia.mandate.task.1",
+    taskId: "abcd1234",
     owner: owner.address,
-    agent: agent.address,
-    ens: ensName,
+    agent,
+    ens: "abcd1234.alice.custodia.eth",
     constraints,
     iat,
-    exp,
+    exp: iat + 3600,
   };
   const signature = await owner.signTypedData({
     domain: MANDATE_DOMAIN,
@@ -116,45 +93,77 @@ it("verifies the signed mandate and sends the chart payload to ENS", async () =>
     primaryType: "Mandate",
     message: {
       kind: mandate.kind,
-      taskId,
-      owner: owner.address,
-      agent: agent.address,
-      ens: ensName,
-      constraintsHash: constraintsHash(constraints),
+      taskId: mandate.taskId,
+      owner: mandate.owner,
+      agent: mandate.agent,
+      ens: mandate.ens,
+      constraintsHash: constraintsHash(constraints as never),
       iat: BigInt(iat),
-      exp: BigInt(exp),
+      exp: BigInt(mandate.exp),
     },
   });
-  const token = createSessionToken({
-    address: owner.address,
-    agent: agent.address,
-    conversationId,
-    issuedAt: Date.now(),
-    expiresAt: Date.now() + 60_000,
-  });
-
-  const response = await POST(
-    new Request("https://example.com/api/mandate", {
+  return { mandate, signature };
+};
+const post = (body: unknown) =>
+  POST(
+    new Request("http://x/api/mandate", {
       method: "POST",
-      headers: {
-        "content-type": "application/json",
-        cookie: `${SESSION_COOKIE_NAME}=${token}`,
-      },
-      body: JSON.stringify({ conversationId, mandate, signature, market, uiSpec }),
+      headers: { "content-type": "application/json", cookie: cookie() },
+      body: JSON.stringify(body),
     }),
   );
+const within = [
+  { type: "custodia.allowed_assets.1", assets: ["ETH", "USDC"] },
+  { type: "custodia.max_drawdown_pct.1", value: 5.4 },
+  { type: "custodia.max_trade_usd.1", value: 10000 },
+  { type: "custodia.allow_rebalance.1", value: false },
+];
 
-  expect(response.status).toBe(200);
-  expect(await response.json()).toMatchObject({ name: ensName, taskId });
-  expect(mocks.createTask).toHaveBeenCalledWith(
-    expect.objectContaining({ parentName: "custodia.eth" }),
-    expect.objectContaining({
-      userLabel: ensName.split(".")[1],
-      taskId,
-      owner: owner.address,
-      agent: agent.address,
-      chart: expect.stringContaining('"schema":"custodia.chart.1"'),
-      ui: expect.stringContaining('"intent":"configure_portfolio_guard"'),
-    }),
+it("accepts a mandate within the stored proposal's bounds and enqueues publication", async () => {
+  mocks.loadProposal.mockResolvedValue(proposalRow());
+  const res = await post({ conversationId, proposalId, ...(await signedMandate(within)) });
+  expect(res.status).toBe(202);
+  expect(await res.json()).toMatchObject({
+    taskId: "abcd1234",
+    ensName: "abcd1234.alice.custodia.eth",
+    jobId: 9,
+  });
+  expect(mocks.enqueueJob).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({ kind: "ens.publish", dedupeKey: "ens.publish:abcd1234" }),
   );
+  expect(mocks.createTask).not.toHaveBeenCalled(); // publication is the worker's job
+});
+
+it("rejects limits outside the proposal bounds", async () => {
+  mocks.loadProposal.mockResolvedValue(proposalRow());
+  const over = within.map((c) =>
+    c.type === "custodia.max_trade_usd.1" ? { ...c, value: 20000 } : c,
+  );
+  const res = await post({ conversationId, proposalId, ...(await signedMandate(over)) });
+  expect(res.status).toBe(400);
+  expect((await res.json()).error).toMatch(/outside the proposal bounds/);
+  expect(mocks.enqueueJob).not.toHaveBeenCalled();
+});
+
+it("ignores browser-supplied market data and UI (strict body)", async () => {
+  mocks.loadProposal.mockResolvedValue(proposalRow());
+  const res = await post({
+    conversationId,
+    proposalId,
+    ...(await signedMandate(within)),
+    market: { pair: "ETH/USDC" },
+    uiSpec,
+  });
+  expect(res.status).toBe(400);
+  expect(mocks.enqueueJob).not.toHaveBeenCalled();
+});
+
+it("rejects a proposal owned by another wallet", async () => {
+  mocks.loadProposal.mockResolvedValue({
+    ...proposalRow(),
+    ownerWallet: "0x3333333333333333333333333333333333333333",
+  });
+  const res = await post({ conversationId, proposalId, ...(await signedMandate(within)) });
+  expect(res.status).toBe(404);
 });
