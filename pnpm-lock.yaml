@@ -126,6 +126,9 @@ importers:
       dotenv:
         specifier: ^17.0.0
         version: 17.4.2
+      drizzle-orm:
+        specifier: ^0.44.7
+        version: 0.44.7(@electric-sql/pglite@0.5.8)(@neondatabase/serverless@1.1.0)
       next:
         specifier: ^15.3.0
         version: 15.5.25(@babel/core@7.29.7(supports-color@8.1.1))(@types/node@24.13.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)

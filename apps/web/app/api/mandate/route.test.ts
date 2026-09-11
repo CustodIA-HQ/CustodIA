@@ -36,7 +36,8 @@ vi.mock("@custodia/db", () => ({
   }),
   tables: { mandates: {}, tasks: { id: "id" } },
 }));
-vi.mock("../identity", () => ({
+vi.mock("../identity", async (orig) => ({
+  ...(await orig<object>()),
   getAgentAddress: () => "0x1111111111111111111111111111111111111111",
 }));
 
