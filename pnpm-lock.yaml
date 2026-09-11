@@ -117,6 +117,9 @@ importers:
       '@custodia/ens':
         specifier: workspace:*
         version: link:../../packages/ens
+      '@custodia/runtime':
+        specifier: workspace:*
+        version: link:../../packages/runtime
       '@custodia/schema':
         specifier: workspace:*
         version: link:../../packages/schema

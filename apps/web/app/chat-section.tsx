@@ -51,7 +51,7 @@ type EthereumProvider = {
   request(args: { method: string; params?: readonly unknown[] }): Promise<unknown>;
 };
 
-const starterPrompts = ["Keep $10k in ETH/USDC", "Cap drawdown at 5%", "What can you protect?"];
+const starterPrompts = ["Show my Sepolia portfolio", "Cap drawdown at 5%", "What can you protect?"];
 
 const welcomeMessage: Message = {
   id: "welcome",
@@ -140,7 +140,11 @@ function GuardPreview({
     <section className="guard-preview" aria-labelledby="guard-preview-title">
       <div className="guard-preview__header">
         <div>
-          <p className="guard-card__eyebrow">ENS guard proposal</p>
+          <p className="guard-card__eyebrow">Sepolia testnet guard proposal</p>
+          <p>
+            Test tokens have no monetary value. USD limits and charts use mainnet reference prices
+            for simulation.
+          </p>
           <h3 id="guard-preview-title">{name}</h3>
           <p className="guard-preview__subline">
             Bound to {shortAddress(guard.proposal.owner)} · agent{" "}
@@ -238,6 +242,7 @@ export default function ChatSection() {
   const [walletAddress, setWalletAddress] = useState<Address | null>(null);
   const [guard, setGuard] = useState<PublishedGuard | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
+  const reviewRef = useRef<HTMLDialogElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const conversationRef = useRef<string | null>(null);
 
@@ -452,8 +457,9 @@ export default function ChatSection() {
           <p className="chat-eyebrow">Conversation layer</p>
           <h2 id="chat-title">Start with intent. Leave with a boundary.</h2>
           <p className="chat-section__lede">
-            Sign once for this conversation. CustodIA gathers live context, pays for a risk check,
-            draws the chart, and binds the approved boundary to your ENS guard subdomain.
+            Sign once for this conversation. CustodIA checks your Sepolia test ETH and USDC balances
+            before proposing a simulated guard. Review charts and sign approvals in the separate
+            guard view.
           </p>
         </div>
         <div className="chat-section__signal" role="status" aria-label="Agent API status">
@@ -540,11 +546,25 @@ export default function ChatSection() {
           </div>
 
           {guard && (
-            <GuardPreview
-              guard={guard}
-              isPublishing={isPublishing}
-              onPublish={() => void publishGuard()}
-            />
+            <>
+              <button type="button" onClick={() => reviewRef.current?.showModal()}>
+                Open guard review
+              </button>
+              <dialog
+                ref={reviewRef}
+                aria-label="Review and sign portfolio guard"
+                style={{ maxWidth: "900px", width: "90vw", maxHeight: "90vh", overflow: "auto" }}
+              >
+                <button type="button" onClick={() => reviewRef.current?.close()}>
+                  Close review
+                </button>
+                <GuardPreview
+                  guard={guard}
+                  isPublishing={isPublishing}
+                  onPublish={() => void publishGuard()}
+                />
+              </dialog>
+            </>
           )}
 
           {error && (
@@ -597,7 +617,7 @@ export default function ChatSection() {
               id="custodia-chat-input"
               name="prompt"
               onChange={(event) => setDraft(event.target.value)}
-              placeholder="e.g. Keep $10k in ETH/USDC, max 5% drawdown"
+              placeholder="e.g. Review my Sepolia holdings and suggest test guardrails"
               type="text"
               value={draft}
             />

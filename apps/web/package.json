@@ -14,6 +14,7 @@
     "@custodia/agent": "workspace:*",
     "@custodia/db": "workspace:*",
     "@custodia/ens": "workspace:*",
+    "@custodia/runtime": "workspace:*",
     "@custodia/schema": "workspace:*",
     "dotenv": "^17.0.0",
     "next": "^15.3.0",
