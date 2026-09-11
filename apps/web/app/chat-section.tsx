@@ -275,6 +275,9 @@ export default function ChatSection() {
         { id: `assistant-${Date.now()}`, role: "assistant", content: reply },
       ]);
     }
+    // No proposal: the agent answered with an explanation (unsupported request,
+    // nothing to guard). The message above is the whole outcome.
+    if (!proposalId) return;
     void (async () => {
       const response = await fetch(`/api/proposals/${proposalId}`);
       const payload = (await response.json().catch(() => ({}))) as ProposalResponse;

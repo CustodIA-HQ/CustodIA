@@ -65,7 +65,34 @@ it("runs the agent, streams stages, stores the proposal and completes the run", 
   expect(await leaseJob(ctx.db, { workerId: "w1" })).toBeNull();
 });
 
-it("fails the run and lets the job back off when the agent throws", async () => {
+it("completes without a proposal when the agent ends in an explanation", async () => {
+  mocks.runAgent.mockImplementation(async ({ onEvent }) => {
+    onEvent({ type: "text", delta: "Nothing to guard: the wallet holds no supported assets." });
+    return { market: null, uiSpec: null, receipts: [], rationale: "" };
+  });
+  const { runId } = await createRun(ctx.db, {
+    conversationId: "c3",
+    ownerWallet: "0xowner",
+    kind: "chat",
+    clientRequestId: "q3",
+    input: { messages: [], agent: "0xagent" },
+  });
+  await enqueueJob(ctx.db, {
+    kind: "chat.run",
+    payload: { runId },
+    dedupeKey: `chat.run:${runId}`,
+  });
+  const registry = new HandlerRegistry().register("chat.run", chatHandler);
+  expect(await tick(ctx.db, registry, "w1")).toBe("ran");
+  expect((await loadRun(ctx.db, runId))?.status).toBe("done");
+  const last = (await listEvents(ctx.db, runId)).at(-1);
+  expect(last).toMatchObject({ type: "result", payload: { proposalId: null, taskId: null } });
+  expect(
+    await ctx.db.select().from(tables.proposals).where(eq(tables.proposals.runId, runId)),
+  ).toHaveLength(0);
+});
+
+it("fails the run WITHOUT retrying the agent when it throws", async () => {
   mocks.runAgent.mockRejectedValueOnce(new Error("provider down"));
   const { runId } = await createRun(ctx.db, {
     conversationId: "c2",
@@ -83,4 +110,8 @@ it("fails the run and lets the job back off when the agent throws", async () => 
   expect(await tick(ctx.db, registry, "w1")).toBe("ran");
   expect((await loadRun(ctx.db, runId))?.status).toBe("failed");
   expect((await listEvents(ctx.db, runId)).at(-1)).toMatchObject({ type: "error" });
+  // the job is done, not re-queued — a second tick must not call the agent again
+  mocks.runAgent.mockClear();
+  expect(await tick(ctx.db, registry, "w1")).toBe("idle");
+  expect(mocks.runAgent).not.toHaveBeenCalled();
 });

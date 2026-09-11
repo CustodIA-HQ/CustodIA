@@ -60,10 +60,10 @@ export function useRun(runId: string | null) {
     | undefined;
   const result = events.find((e) => e.type === "result")?.payload as
     | {
-        proposalId: string;
-        proposalHash: string;
-        ensName: string;
-        taskId: string;
+        proposalId: string | null;
+        proposalHash: string | null;
+        ensName: string | null;
+        taskId: string | null;
         rationale: string;
         receipts: unknown[];
       }

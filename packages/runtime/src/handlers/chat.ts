@@ -27,7 +27,9 @@ export const chatHandler: JobHandler = async ({ db, job, heartbeat }) => {
   const { runId } = job.payload as { runId: string };
   const [run] = await db.select().from(tables.runs).where(eq(tables.runs.id, runId)).limit(1);
   if (!run) throw new Error(`run ${runId} not found`);
-  if (run.status === "done") return; // duplicate delivery — nothing to do
+  // Duplicate delivery or a retried job: an agent run is never repeated —
+  // it costs money and is not idempotent.
+  if (run.status === "done" || run.status === "failed") return;
   await db.update(tables.runs).set({ status: "running" }).where(eq(tables.runs.id, runId));
 
   const input = run.input as ChatRunInput;
@@ -56,7 +58,21 @@ export const chatHandler: JobHandler = async ({ db, job, heartbeat }) => {
       },
     });
     await chain;
-    if (!result.uiSpec || !result.market) throw new Error("agent finished without a UI spec");
+
+    // A run may legitimately end without a proposal (policy denied the paid
+    // analysis, unsupported request, nothing to guard). That is a completed
+    // run whose result is the explanation, not a failure.
+    if (!result.uiSpec || !result.market) {
+      await completeRun(db, runId, {
+        proposalId: null,
+        proposalHash: null,
+        ensName: null,
+        taskId: null,
+        rationale: result.rationale,
+        receipts: result.receipts,
+      });
+      return;
+    }
 
     const taskId = randomBytes(4).toString("hex");
     const userLabel = await getUserLabel(owner);
@@ -87,7 +103,9 @@ export const chatHandler: JobHandler = async ({ db, job, heartbeat }) => {
     });
   } catch (err) {
     await chain.catch(() => undefined);
+    // Record the failure on the run and let the job complete: retrying would
+    // re-run the agent (and re-pay). Infrastructure errors before the agent
+    // starts (run not found) still throw above and are retried.
     await failRun(db, runId, err instanceof Error ? err.message : String(err));
-    throw err;
   }
 };
