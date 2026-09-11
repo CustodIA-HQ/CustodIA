@@ -9,9 +9,10 @@ import {
   type MarketContext,
   type UISpec,
 } from "@custodia/schema";
-import { type FormEvent, useRef, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { getAddress } from "viem";
 import GuardChart from "./guard/guard-chart";
+import { useRun } from "./use-run";
 
 type Message = {
   id: string;
@@ -30,22 +31,27 @@ type Proposal = {
 
 type ChatResponse = {
   error?: string;
-  message?: string;
-  reply?: string;
-  content?: string;
-  owner?: Address;
-  agent?: Address;
-  market?: MarketContext | null;
-  uiSpec?: UISpec | null;
+  runId?: string;
+  created?: boolean;
+};
+
+type ProposalResponse = {
+  error?: string;
+  id?: string;
+  market?: MarketContext;
+  uiSpec?: UISpec;
   proposal?: Proposal;
 };
 
 type PublishedGuard = {
+  proposalId: string;
   market: MarketContext;
   proposal: Proposal;
   uiSpec: UISpec;
   publishedName?: string;
 };
+
+const RUN_STORAGE_KEY = "custodia:runId";
 
 type EthereumProvider = {
   request(args: { method: string; params?: readonly unknown[] }): Promise<unknown>;
@@ -242,6 +248,49 @@ export default function ChatSection() {
   const [walletAddress, setWalletAddress] = useState<Address | null>(null);
   const [guard, setGuard] = useState<PublishedGuard | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
+  // The run id survives reloads: progress is re-read from /api/runs/:id/events.
+  const [runId, setRunId] = useState<string | null>(() =>
+    typeof window === "undefined" ? null : window.sessionStorage.getItem(RUN_STORAGE_KEY),
+  );
+  const run = useRun(runId);
+  const handledRunRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!runId || handledRunRef.current === runId) return;
+    if (run.status === "failed") {
+      handledRunRef.current = runId;
+      window.sessionStorage.removeItem(RUN_STORAGE_KEY);
+      setErrorTitle("The agent could not complete that request.");
+      setError(run.error ?? "The run failed.");
+      return;
+    }
+    if (run.status !== "done" || !run.result) return;
+    handledRunRef.current = runId;
+    window.sessionStorage.removeItem(RUN_STORAGE_KEY);
+    const { proposalId, rationale } = run.result;
+    const reply = run.text.trim() || rationale;
+    if (reply) {
+      setMessages((current) => [
+        ...current,
+        { id: `assistant-${Date.now()}`, role: "assistant", content: reply },
+      ]);
+    }
+    void (async () => {
+      const response = await fetch(`/api/proposals/${proposalId}`);
+      const payload = (await response.json().catch(() => ({}))) as ProposalResponse;
+      if (!response.ok || !payload.market || !payload.uiSpec || !payload.proposal) {
+        setErrorTitle("The proposal could not be loaded.");
+        setError(payload.error || "Reload the page and try again.");
+        return;
+      }
+      setGuard({
+        proposalId,
+        market: payload.market,
+        uiSpec: payload.uiSpec,
+        proposal: payload.proposal,
+      });
+    })();
+  }, [runId, run.status, run.result, run.text, run.error]);
   const reviewRef = useRef<HTMLDialogElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const conversationRef = useRef<string | null>(null);
@@ -360,16 +409,19 @@ export default function ChatSection() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           conversationId: conversationId(conversationRef),
+          proposalId: guard.proposalId,
           mandate,
           signature,
-          market: guard.market,
-          uiSpec: guard.uiSpec,
         }),
       });
-      const result = (await response.json().catch(() => ({}))) as { name?: string; error?: string };
-      if (!response.ok || !result.name)
-        throw new Error(result.error || "The ENS guard could not be published.");
-      setGuard((current) => (current ? { ...current, publishedName: result.name } : current));
+      const result = (await response.json().catch(() => ({}))) as {
+        ensName?: string;
+        error?: string;
+      };
+      if (!response.ok || !result.ensName)
+        throw new Error(result.error || "The task could not be authorized.");
+      // The worker publishes to ENS; the guard page shows the live status.
+      setGuard((current) => (current ? { ...current, publishedName: result.ensName } : current));
     } catch (caught) {
       const message =
         caught instanceof Error ? caught.message : "The ENS guard could not be published.";
@@ -405,6 +457,8 @@ export default function ChatSection() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           conversationId: conversationId(conversationRef),
+          // Idempotency key: a retry of this exact message reuses the same run.
+          clientRequestId: crypto.randomUUID(),
           message: content,
           messages: [...messages, userMessage].map(({ role, content: text }) => ({
             role,
@@ -419,16 +473,10 @@ export default function ChatSection() {
         throw new Error(payload.error || "The agent is unavailable right now.");
       }
 
-      const reply = payload.message || payload.reply || payload.content;
-      if (!reply) throw new Error("The agent returned an empty response. Try again.");
-
-      setMessages((current) => [
-        ...current,
-        { id: `assistant-${Date.now()}`, role: "assistant", content: reply },
-      ]);
-      if (payload.market && payload.uiSpec && payload.proposal) {
-        setGuard({ market: payload.market, uiSpec: payload.uiSpec, proposal: payload.proposal });
-      }
+      if (!payload.runId) throw new Error("The agent did not accept the request. Try again.");
+      window.sessionStorage.setItem(RUN_STORAGE_KEY, payload.runId);
+      handledRunRef.current = null;
+      setRunId(payload.runId);
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "The request failed. Try again.";
       setErrorTitle(
@@ -537,11 +585,18 @@ export default function ChatSection() {
                 <p>{message.content}</p>
               </div>
             ))}
-            {isLoading && (
-              <div className="chat-message chat-message--assistant chat-message--loading">
-                <span className="chat-message__role">CustodIA</span>
-                <p>Thinking through the guardrails…</p>
-              </div>
+            {(isLoading || (runId && run.status !== "done" && run.status !== "failed")) && (
+              <article
+                className="chat-message chat-message--assistant chat-progress"
+                aria-live="polite"
+              >
+                <p>
+                  <strong>{isLoading ? "Queuing your request…" : run.stageLabel}</strong>
+                  {!isLoading && run.events.length > 0 && (
+                    <small> · {run.events.length} events</small>
+                  )}
+                </p>
+              </article>
             )}
           </div>
 
