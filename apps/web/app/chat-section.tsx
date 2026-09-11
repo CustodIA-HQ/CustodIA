@@ -3,15 +3,13 @@
 import {
   type Address,
   type Constraint,
-  constraintsHash,
-  MANDATE_DOMAIN,
-  MANDATE_TYPES,
   type MarketContext,
   type UISpec,
 } from "@custodia/schema";
 import { type FormEvent, useRef, useState } from "react";
 import { getAddress } from "viem";
 import GuardChart from "./guard/guard-chart";
+import MandateRenderer from "./mandate-renderer";
 
 type Message = {
   id: string;
@@ -299,12 +297,16 @@ export default function ChatSection() {
     }
   };
 
-  const publishGuard = async () => {
+  /**
+   * Publishes the guard to ENS using a signature already obtained by MandateRenderer.
+   * The signature and mandate hash come from the EIP-712 flow inside that component,
+   * so we no longer need to request a second wallet interaction here.
+   */
+  const publishGuard = async (signature: string) => {
     if (!guard || !walletAddress || isPublishing) return;
     setIsPublishing(true);
     setError(null);
     try {
-      const provider = getEthereum();
       const constraints = constraintsFor(guard.uiSpec);
       const iat = Math.floor(Date.now() / 1_000);
       const exp = iat + 30 * 24 * 60 * 60;
@@ -318,37 +320,6 @@ export default function ChatSection() {
         iat,
         exp,
       };
-      const typedMessage = {
-        kind: mandate.kind,
-        taskId: mandate.taskId,
-        owner: mandate.owner,
-        agent: mandate.agent,
-        ens: mandate.ens,
-        constraintsHash: constraintsHash(constraints),
-        iat: String(iat),
-        exp: String(exp),
-      };
-      const signature = await provider.request({
-        method: "eth_signTypedData_v4",
-        params: [
-          walletAddress,
-          JSON.stringify({
-            types: {
-              EIP712Domain: [
-                { name: "name", type: "string" },
-                { name: "version", type: "string" },
-                { name: "chainId", type: "uint256" },
-              ],
-              ...MANDATE_TYPES,
-            },
-            domain: MANDATE_DOMAIN,
-            primaryType: "Mandate",
-            message: typedMessage,
-          }),
-        ],
-      });
-      if (typeof signature !== "string")
-        throw new Error("The wallet did not return a typed-data signature.");
 
       const response = await fetch("/api/mandate", {
         method: "POST",
@@ -539,11 +510,22 @@ export default function ChatSection() {
             )}
           </div>
 
-          {guard && (
+          {guard && !guard.publishedName && (
+            <MandateRenderer
+              spec={guard.uiSpec}
+              ensName={guard.proposal.ensName}
+              agentAddress={guard.proposal.agent}
+              ttlSeconds={30 * 24 * 60 * 60}
+              onSigned={({ signature }) => void publishGuard(signature)}
+              onRevoke={() => setGuard(null)}
+            />
+          )}
+
+          {guard && guard.publishedName && (
             <GuardPreview
               guard={guard}
               isPublishing={isPublishing}
-              onPublish={() => void publishGuard()}
+              onPublish={() => { /* already published */ }}
             />
           )}
 

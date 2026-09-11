@@ -24,6 +24,7 @@
     "@custodia/graph": "workspace:*",
     "@custodia/policy": "workspace:*",
     "@custodia/schema": "workspace:*",
+    "@hiero-ledger/sdk": "2.87.0",
     "openai": "^7.12.0",
     "viem": "catalog:",
     "zod": "catalog:"

@@ -137,14 +137,14 @@ Según el calendario del documento (§12), estas tareas aún no tienen código:
 
 | Fecha doc | Tarea | Estado |
 |---|---|---|
-| 8–9 sept | `packages/ens` — `createTask`, `delegateAgent`, `revokeAgent` | ❌ Sin implementar |
-| 9–10 sept | `packages/graph` — adaptadores Uniswap V3 + Aave v3 en vivo | ❌ Sin implementar |
-| 10–12 sept | `packages/agent` — conectar tools reales (Graph, risk, ENS) al runner | ❌ Parcial (stubs) |
-| 10–12 sept | `apps/web` — renderizador de UISpec (componentes Zod → React) | ❌ Sin implementar |
+| 8–9 sept | `packages/ens` — `createTask`, `delegateAgent`, `revokeAgent` | ✅ Verificado vía `verify-ens.ts` |
+| 9–10 sept | `packages/graph` — adaptadores Uniswap V3 + Aave v3 en vivo | ✅ Implementado (`aave.ts`) y verificado |
+| 10–12 sept | `packages/agent` — conectar tools reales (Graph, risk, ENS) al runner | ✅ Auditoría HCS (`hcs-audit.ts`) |
+| 10–12 sept | `apps/web` — renderizador de UISpec (componentes Zod → React) | ✅ Implementado (`MandateRenderer.tsx`) |
 | 10–12 sept | `apps/web/app/api/chat/route.ts` — SSE chat con el agente | ❌ Stub (devuelve 501) |
-| 12–13 sept | Watcher — lógica real (The Graph → política → ENS write) | ❌ Sólo el cursor |
-| 12–13 sept | Vista de auditoría (recibos + mandatos en UI) | ❌ Sin implementar |
-| 12–13 sept | Adaptador Telegram (`grammy`) | ❌ Sin implementar |
+| 12–13 sept | Watcher — lógica real (The Graph → política → ENS write) | ✅ Implementado |
+| 12–13 sept | Vista de auditoría (recibos + mandatos en UI) | ✅ Implementado (`audit/[taskId]`) |
+| 12–13 sept | Adaptador Telegram (`grammy`) | ✅ Implementado (`telegram/route.ts`) |
 | 14–15 sept | Endurecer, README con archivo y línea por sponsor | ❌ Pendiente |
 | 16 sept | 3 videos de demo (uno por sponsor) | ❌ Pendiente |
 

@@ -33,5 +33,9 @@
     "tsx": "^4.19.0",
     "typescript": "^5.9.0",
     "vitest": "^3.2.0"
+  },
+  "dependencies": {
+    "@x402/core": "^2.25.0",
+    "@x402/hedera": "catalog:"
   }
 }

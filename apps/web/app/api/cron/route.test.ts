@@ -18,6 +18,7 @@ it("rejects an incorrect credential", async () => {
 });
 it("reports the watcher as unimplemented without database access", async () => {
   vi.stubEnv("CRON_SECRET", "test-secret");
+  vi.stubEnv("DATABASE_URL", "");
   expect(
     (
       await GET(
