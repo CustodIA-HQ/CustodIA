@@ -1,5 +1,5 @@
 {
-  "name": "@custodia/db",
+  "name": "@custodia/runtime",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -17,20 +17,14 @@
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "test": "vitest run"
   },
   "dependencies": {
+    "@custodia/agent": "workspace:*",
+    "@custodia/db": "workspace:*",
+    "@custodia/ens": "workspace:*",
     "@custodia/schema": "workspace:*",
-    "@neondatabase/serverless": "^1.0.0",
     "drizzle-orm": "^0.44.0",
-    "ws": "^8.21.3"
-  },
-  "devDependencies": {
-    "@electric-sql/pglite": "^0.5.8",
-    "@types/ws": "^8.18.1",
-    "dotenv": "^17.4.2",
-    "drizzle-kit": "^0.31.0"
+    "viem": "catalog:"
   }
 }
