@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { formatFiat, formatPercent, formatTokenAmount } from "../format-number";
 
 export interface WalletSnapshot {
@@ -116,6 +117,9 @@ export function BalanceCard({
   const ethFiat = formatFiat(ethUsd, "compact");
   const usdcFiat = formatFiat(usdcUsd, "compact");
   const closes = hourly?.slice(-168).map((point) => point.close) ?? [];
+  const [picked, setPicked] = useState<"ETH" | "USDC" | null>(null);
+  const pickedShare = picked === "ETH" ? ethShare : picked === "USDC" ? usdcShare : null;
+  const pickedFiat = picked === "ETH" ? ethFiat : picked === "USDC" ? usdcFiat : null;
 
   return (
     <section className="wallet-card" aria-label="Wallet snapshot">
@@ -136,13 +140,41 @@ export function BalanceCard({
       </p>
 
       {ethShare != null && usdcShare != null && (
-        <div
-          className="wallet-card__mix"
-          role="img"
-          aria-label={`Allocation ${formatPercent(ethShare).display} ETH, ${formatPercent(usdcShare).display} USDC`}
-        >
-          <span className="wallet-card__mix-eth" style={{ width: `${ethShare}%` }} />
-          <span className="wallet-card__mix-usdc" style={{ width: `${usdcShare}%` }} />
+        <div className="wallet-card__mix-wrap">
+          <fieldset className="wallet-card__mix">
+            <legend className="sr-only">
+              Allocation {formatPercent(ethShare).display} ETH, {formatPercent(usdcShare).display}{" "}
+              USDC. Tap a segment for details.
+            </legend>
+            <button
+              type="button"
+              className="wallet-card__mix-eth"
+              style={{ width: `${ethShare}%` }}
+              aria-pressed={picked === "ETH"}
+              aria-label={`ETH ${formatPercent(ethShare).display}`}
+              onClick={() => setPicked((current) => (current === "ETH" ? null : "ETH"))}
+            />
+            <button
+              type="button"
+              className="wallet-card__mix-usdc"
+              style={{ width: `${usdcShare}%` }}
+              aria-pressed={picked === "USDC"}
+              aria-label={`USDC ${formatPercent(usdcShare).display}`}
+              onClick={() => setPicked((current) => (current === "USDC" ? null : "USDC"))}
+            />
+          </fieldset>
+          <p className="wallet-card__mix-detail" aria-live="polite">
+            {picked && pickedShare != null && pickedFiat ? (
+              <>
+                <strong>{picked}</strong> {formatPercent(pickedShare).display} ·{" "}
+                <span className="wallet-num">{pickedFiat.display}</span>
+              </>
+            ) : (
+              <span className="wallet-card__mix-hint">
+                {formatPercent(ethShare).display} ETH · {formatPercent(usdcShare).display} USDC
+              </span>
+            )}
+          </p>
         </div>
       )}
 

@@ -12,12 +12,16 @@ bot.on("message:text", async (ctx) => {
 
   try {
     const { eq, and } = await import("drizzle-orm");
-    const [binding] = await db.select().from(tables.channelBindings).where(
-      and(
-        eq(tables.channelBindings.channel, "telegram"),
-        eq(tables.channelBindings.externalId, telegramUserId)
+    const [binding] = await db
+      .select()
+      .from(tables.channelBindings)
+      .where(
+        and(
+          eq(tables.channelBindings.channel, "telegram"),
+          eq(tables.channelBindings.externalId, telegramUserId),
+        ),
       )
-    ).limit(1);
+      .limit(1);
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 

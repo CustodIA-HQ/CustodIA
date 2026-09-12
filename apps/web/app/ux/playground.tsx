@@ -38,6 +38,7 @@ export function UxPlayground({ initial = "position_protection" }: { initial?: La
   const [liveMarkets, setLiveMarkets] = useState<MarketContext[]>([]);
   const [live, setLive] = useState(false);
   const [liveError, setLiveError] = useState<string | null>(null);
+  const [panelOpen, setPanelOpen] = useState(false);
   const portfolio =
     mix === "eth"
       ? { eth: "4", usdc: "200" }
@@ -150,7 +151,22 @@ export function UxPlayground({ initial = "position_protection" }: { initial?: La
 
   return (
     <div className="ux-lab">
-      <aside className="ux-lab__rail">
+      <button
+        type="button"
+        className="ux-lab__toggle"
+        aria-expanded={panelOpen}
+        aria-controls="ux-lab-rail"
+        onClick={() => setPanelOpen((current) => !current)}
+      >
+        {panelOpen ? "Hide scenario controls" : "Adjust scenario"}
+        <span className="ux-lab__toggle-meta">
+          {LAB_CASES.find((item) => item.id === active)?.title ?? active} · {pair} · {range}
+        </span>
+      </button>
+      <aside
+        className={panelOpen ? "ux-lab__rail ux-lab__rail--open" : "ux-lab__rail"}
+        id="ux-lab-rail"
+      >
         <p className="home-hero__note">
           {live ? `Live Graph · ${liveMarkets.length} pairs` : "Sample · Graph unavailable"}
         </p>

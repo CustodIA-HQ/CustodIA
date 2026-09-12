@@ -1,6 +1,7 @@
 import type { MarketContext, UISpec } from "@custodia/schema";
-import { formatFiat, formatPercent } from "../format-number";
+import { formatFiat, formatPercent, formatTokenAmount } from "../format-number";
 import GuardChart from "../guard/guard-chart";
+import { BoundaryTile } from "./boundary-tile";
 import { HealthMeter } from "./health-meter";
 import { PayoffChart } from "./payoff-chart";
 
@@ -101,37 +102,50 @@ export function GeneratedUx({
           <h2>The signed guard</h2>
           <div className="guard-boundaries">
             {allocation?.type === "allocation_selector" && (
-              <div className="guard-boundary">
-                <span>Allocation</span>
-                <strong>
-                  {allocation.assets
-                    .map((asset, index) => `${allocation.defaultPct[index]}% ${asset}`)
-                    .join(" / ")}
-                </strong>
-              </div>
+              <BoundaryTile
+                label="Allocation"
+                value={allocation.assets
+                  .map((asset, index) => `${allocation.defaultPct[index]}% ${asset}`)
+                  .join(" / ")}
+                detail={
+                  market?.priceUsd
+                    ? `Target split of the guarded value; rebalances only inside the signed limits.`
+                    : undefined
+                }
+              />
             )}
             {drawdown?.type === "range_slider" && (
-              <div className="guard-boundary">
-                <span>Maximum drawdown</span>
-                <strong>
-                  {drawdown.min}%–{drawdown.max}%
-                </strong>
-              </div>
+              <BoundaryTile
+                label="Maximum drawdown"
+                value={`${drawdown.min}%–${drawdown.max}%`}
+                detail={
+                  market?.priceUsd
+                    ? `At ${formatFiat(market.priceUsd, "compact").display} today, a ${drawdown.max}% drawdown pauses the agent below ${formatFiat(market.priceUsd * (1 - drawdown.max / 100), "compact").display}.`
+                    : undefined
+                }
+              />
             )}
             {tradeSize?.type === "amount_selector" && (
-              <div className="guard-boundary">
-                <span>Maximum trade</span>
-                <strong>
-                  {formatFiat(tradeSize.min, "compact").display}–
-                  {formatFiat(tradeSize.max, "compact").display}
-                </strong>
-              </div>
+              <BoundaryTile
+                label="Maximum trade"
+                value={`${formatFiat(tradeSize.min, "compact").display}–${formatFiat(tradeSize.max, "compact").display}`}
+                detail={
+                  market?.priceUsd
+                    ? `≈ ${formatTokenAmount(tradeSize.max / market.priceUsd, market.priceUsd).display} ${market.base ?? "ETH"} per trade at today's price.`
+                    : undefined
+                }
+              />
             )}
             {rebalance?.type === "permission_toggle" && (
-              <div className="guard-boundary">
-                <span>Rebalancing</span>
-                <strong>{rebalance.default ? "Enabled" : "Disabled by default"}</strong>
-              </div>
+              <BoundaryTile
+                label="Rebalancing"
+                value={rebalance.default ? "Enabled" : "Disabled by default"}
+                detail={
+                  rebalance.default
+                    ? "The agent may rebalance inside the limits above without asking again."
+                    : "The agent cannot rebalance. Turning this on needs a new signature."
+                }
+              />
             )}
           </div>
         </section>

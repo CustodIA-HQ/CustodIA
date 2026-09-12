@@ -1,8 +1,15 @@
-export const CHART_LAYOUT = {
+export type ChartLayout = {
+  width: number;
+  height: number;
+  padding: { top: number; right: number; bottom: number; left: number };
+};
+
+/** Server-render default; the client re-lays out in CSS pixels (see chart-geometry.ts). */
+export const CHART_LAYOUT: ChartLayout = {
   width: 720,
   height: 250,
   padding: { top: 20, right: 18, bottom: 28, left: 18 },
-} as const;
+};
 
 export type ChartRange = "24h" | "7d";
 
@@ -57,6 +64,7 @@ export const chartScale = (
   hourly: HourlyPoint[],
   range: ChartRange,
   extra: number[] = [],
+  layout: ChartLayout = CHART_LAYOUT,
 ): Scale => {
   const points = sliceHourly(hourly, range);
   const values = [
@@ -66,12 +74,12 @@ export const chartScale = (
   const low = values.length ? Math.min(...values) : 0;
   const high = values.length ? Math.max(...values) : 1;
   const spread = Math.max(high - low, high * 0.001, 0.01);
-  const innerWidth = CHART_LAYOUT.width - CHART_LAYOUT.padding.left - CHART_LAYOUT.padding.right;
-  const innerHeight = CHART_LAYOUT.height - CHART_LAYOUT.padding.top - CHART_LAYOUT.padding.bottom;
+  const innerWidth = layout.width - layout.padding.left - layout.padding.right;
+  const innerHeight = layout.height - layout.padding.top - layout.padding.bottom;
   const x = (index: number) =>
-    CHART_LAYOUT.padding.left +
+    layout.padding.left +
     (points.length <= 1 ? innerWidth / 2 : (index / (points.length - 1)) * innerWidth);
-  const y = (value: number) => CHART_LAYOUT.padding.top + ((high - value) / spread) * innerHeight;
+  const y = (value: number) => layout.padding.top + ((high - value) / spread) * innerHeight;
   return { points, low, high, spread, innerWidth, innerHeight, x, y };
 };
 

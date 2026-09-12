@@ -22,21 +22,28 @@ export async function POST(request: Request) {
   if (!session) return NextResponse.json({ error: "Sign in first." }, { status: 401 });
   const parsed = BodySchema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) {
-    return NextResponse.json({ error: "Label and a wallet signature are required." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Label and a wallet signature are required." },
+      { status: 400 },
+    );
   }
   const claim = parseClaimLabel(parsed.data.label, getParentName());
   if (!claim.ok) return NextResponse.json({ error: claim.error }, { status: 400 });
 
   const expected = claimMessage(session.address, claim.name);
   if (parsed.data.message.trim() !== expected) {
-    return NextResponse.json({ error: "Signed message does not match this ENS claim." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Signed message does not match this ENS claim." },
+      { status: 400 },
+    );
   }
   const valid = await verifyMessage({
     address: session.address,
     message: parsed.data.message,
     signature: parsed.data.signature as `0x${string}`,
   });
-  if (!valid) return NextResponse.json({ error: "ENS claim signature was rejected." }, { status: 401 });
+  if (!valid)
+    return NextResponse.json({ error: "ENS claim signature was rejected." }, { status: 401 });
 
   try {
     await claimUserLabel(createDb() as never, session.address, claim.label);

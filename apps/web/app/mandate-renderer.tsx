@@ -63,8 +63,7 @@ type SignatureResult = {
 
 const getEthereum = (): EthereumProvider => {
   const provider = (window as Window & { ethereum?: EthereumProvider }).ethereum;
-  if (!provider)
-    throw new Error("No wallet detected. Install MetaMask or another browser wallet.");
+  if (!provider) throw new Error("No wallet detected. Install MetaMask or another browser wallet.");
   return provider;
 };
 
@@ -387,9 +386,7 @@ export default function MandateRenderer({
               max={100}
               step={5}
               value={form.ethPct}
-              onChange={(e) =>
-                dispatch({ type: "SET_ETH_PCT", value: Number(e.target.value) })
-              }
+              onChange={(e) => dispatch({ type: "SET_ETH_PCT", value: Number(e.target.value) })}
               style={{ width: "100%", accentColor: "#00d4b4" }}
               aria-label="ETH allocation percentage"
             />
@@ -429,9 +426,7 @@ export default function MandateRenderer({
               max={drawdown.max}
               step={1}
               value={form.maxDrawdownPct}
-              onChange={(e) =>
-                dispatch({ type: "SET_DRAWDOWN", value: Number(e.target.value) })
-              }
+              onChange={(e) => dispatch({ type: "SET_DRAWDOWN", value: Number(e.target.value) })}
               style={{ width: "100%", accentColor: "#00d4b4" }}
               aria-label="Maximum drawdown percentage trigger"
             />
@@ -471,9 +466,7 @@ export default function MandateRenderer({
               max={tradeSize.max}
               step={100}
               value={form.maxTradeUsd}
-              onChange={(e) =>
-                dispatch({ type: "SET_TRADE_USD", value: Number(e.target.value) })
-              }
+              onChange={(e) => dispatch({ type: "SET_TRADE_USD", value: Number(e.target.value) })}
               style={{ width: "100%", accentColor: "#00d4b4" }}
               aria-label="Maximum trade size in USD"
             />
@@ -527,9 +520,7 @@ export default function MandateRenderer({
                 id="allow-rebalance-toggle"
                 type="checkbox"
                 checked={form.allowRebalance}
-                onChange={(e) =>
-                  dispatch({ type: "SET_ALLOW_REBALANCE", value: e.target.checked })
-                }
+                onChange={(e) => dispatch({ type: "SET_ALLOW_REBALANCE", value: e.target.checked })}
                 style={{ opacity: 0, width: 0, height: 0, position: "absolute" }}
                 aria-label="Allow autonomous rebalance"
               />
@@ -538,9 +529,7 @@ export default function MandateRenderer({
                   position: "absolute",
                   inset: 0,
                   borderRadius: 22,
-                  background: form.allowRebalance
-                    ? "#00d4b4"
-                    : "rgba(226,240,255,0.12)",
+                  background: form.allowRebalance ? "#00d4b4" : "rgba(226,240,255,0.12)",
                   transition: "background 0.2s",
                   cursor: isDisabled ? "not-allowed" : "pointer",
                 }}
@@ -708,8 +697,8 @@ export default function MandateRenderer({
           textAlign: "center",
         }}
       >
-        CustodIA proposes · you authorise · the policy engine executes.
-        No funds move without your explicit signature and policy validation.
+        CustodIA proposes · you authorise · the policy engine executes. No funds move without your
+        explicit signature and policy validation.
       </p>
     </section>
   );

@@ -32,7 +32,9 @@ export function EnsClaimForm({
     }
     const handle = window.setTimeout(() => {
       void (async () => {
-        const response = await fetch(`/api/ens/available?label=${encodeURIComponent(draft.trim())}`);
+        const response = await fetch(
+          `/api/ens/available?label=${encodeURIComponent(draft.trim())}`,
+        );
         const payload = (await response.json()) as Availability;
         setAvailability(payload);
       })();
@@ -45,7 +47,13 @@ export function EnsClaimForm({
     setBusy(true);
     setError(null);
     try {
-      const provider = (window as Window & { ethereum?: { request(args: { method: string; params?: readonly unknown[] }): Promise<unknown> } }).ethereum;
+      const provider = (
+        window as Window & {
+          ethereum?: {
+            request(args: { method: string; params?: readonly unknown[] }): Promise<unknown>;
+          };
+        }
+      ).ethereum;
       if (!provider) throw new Error("Connect a browser wallet.");
       const message = claimMessage(wallet, availability.name);
       const signature = await provider.request({
@@ -79,8 +87,8 @@ export function EnsClaimForm({
     >
       <p className="ens-claim__label">Choose your ENS identity</p>
       <p className="ens-claim__hint">
-        This name is minted under {parentName}. Every workflow is a subdomain of it, and the
-        claim signature must match this wallet.
+        This name is minted under {parentName}. Every workflow is a subdomain of it, and the claim
+        signature must match this wallet.
       </p>
       <div className="ens-claim__row">
         <input

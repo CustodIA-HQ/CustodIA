@@ -41,8 +41,17 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
   };
   const spentRows = await db.select().from(tables.receipts).where(eq(tables.receipts.taskId, id));
   const spentUsd = spentRows
-    .filter((row) => row.kind === "simulated" && typeof (row.payload as { action?: { notionalUsd?: number } })?.action?.notionalUsd === "number")
-    .reduce((sum, row) => sum + Number((row.payload as { action: { notionalUsd: number } }).action.notionalUsd), 0);
+    .filter(
+      (row) =>
+        row.kind === "simulated" &&
+        typeof (row.payload as { action?: { notionalUsd?: number } })?.action?.notionalUsd ===
+          "number",
+    )
+    .reduce(
+      (sum, row) =>
+        sum + Number((row.payload as { action: { notionalUsd: number } }).action.notionalUsd),
+      0,
+    );
   const decision = evaluate(mandateRow.typedData as Mandate, action, {
     spentUsd,
     now: Math.floor(Date.now() / 1000),

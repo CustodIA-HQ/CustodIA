@@ -84,7 +84,6 @@ export function useRun(runId: string | null) {
     };
   }, [runId]);
 
-
   const stage = events.length ? (events[events.length - 1]?.stage ?? "queued") : "queued";
   const errorEvent = events.find((e) => e.type === "error")?.payload as
     | { error?: string }

@@ -26,14 +26,18 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
   }
   const expected = `CustodIA revoke task ${id}`;
   if (parsed.data.message.trim() !== expected) {
-    return NextResponse.json({ error: "Revoke message does not match this task." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Revoke message does not match this task." },
+      { status: 400 },
+    );
   }
   const valid = await verifyMessage({
     address: session.address,
     message: parsed.data.message,
     signature: parsed.data.signature as `0x${string}`,
   });
-  if (!valid) return NextResponse.json({ error: "Revoke signature was rejected." }, { status: 401 });
+  if (!valid)
+    return NextResponse.json({ error: "Revoke signature was rejected." }, { status: 401 });
 
   const db = createDb();
   const task = await loadTask(db as never, id);
@@ -44,7 +48,9 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
   try {
     await revokeAgent(loadEnsConfig(), task.ensName, getAgentAddress());
   } catch (error) {
-    console.error(`[revoke] ENS role revoke deferred: ${error instanceof Error ? error.message : error}`);
+    console.error(
+      `[revoke] ENS role revoke deferred: ${error instanceof Error ? error.message : error}`,
+    );
   }
   return NextResponse.json({ ok: true, status: "revoked", ensName: task.ensName });
 }

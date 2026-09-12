@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Image from "next/image";
+import { useEffect, useState } from "react";
 import ChatSection from "../chat-section";
 import { SiteHeader } from "../components/site-header";
 
@@ -28,9 +28,7 @@ export default function ChatPage() {
             priority
           />
         </div>
-        <h1 className="mt-8 text-2xl font-mono text-zinc-100 tracking-wide">
-          CustodIA
-        </h1>
+        <h1 className="mt-8 text-2xl font-mono text-zinc-100 tracking-wide">CustodIA</h1>
         <p className="mt-3 text-sm font-mono text-zinc-500 animate-pulse">
           Initializing secure environment...
         </p>
