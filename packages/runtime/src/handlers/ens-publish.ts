@@ -1,5 +1,11 @@
 import { tables } from "@custodia/db";
-import { createTask, loadEnsConfig } from "@custodia/ens";
+import {
+  createTask,
+  directoryUrl,
+  loadEnsConfig,
+  makeOwnerName,
+  taskDirectoryPath,
+} from "@custodia/ens";
 import { type Mandate, type MarketContext, mandateDigest, type UISpec } from "@custodia/schema";
 import { and, eq } from "drizzle-orm";
 import type { JobHandler } from "../registry.js";
@@ -54,6 +60,7 @@ export const ensPublishHandler: JobHandler = async ({ db, job }) => {
   };
 
   const config = loadEnsConfig();
+  const ownerName = makeOwnerName(body.proposal.userLabel, config.parentName);
   const created = await createTask(config, {
     userLabel: body.proposal.userLabel,
     taskId,
@@ -63,6 +70,7 @@ export const ensPublishHandler: JobHandler = async ({ db, job }) => {
     status: "active",
     chart: chartPayload(body.market, body.uiSpec),
     ui: JSON.stringify(body.uiSpec),
+    url: directoryUrl(taskDirectoryPath(ownerName, taskId, task.template)),
   });
 
   await db.insert(tables.receipts).values([

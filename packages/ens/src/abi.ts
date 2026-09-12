@@ -32,4 +32,13 @@ export const TASK_TEXT_KEYS = [
   "xyz.custodia.status",
   "xyz.custodia.chart",
   "xyz.custodia.ui",
+  "url",
+] as const;
+
+/** Records written on the owner's identity name `{label}.{parent}`. */
+export const OWNER_TEXT_KEYS = [
+  "xyz.custodia.owner",
+  "xyz.custodia.kind",
+  "xyz.custodia.agent",
+  "url",
 ] as const;

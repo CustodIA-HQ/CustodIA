@@ -1,11 +1,13 @@
 import { randomBytes } from "node:crypto";
-import { runAgent } from "@custodia/agent";
+import { classifyIntent, runAgent } from "@custodia/agent";
 import { PostgresMarketCache, tables } from "@custodia/db";
-import { getParentName, getUserLabel, makeTaskName } from "@custodia/ens";
+import { getParentName, makeTaskName } from "@custodia/ens";
+import { templateForIntent } from "@custodia/schema";
 import { eq } from "drizzle-orm";
 import { storeProposal } from "../proposals.js";
 import type { JobHandler } from "../registry.js";
 import { appendEvent, completeRun, failRun, type RunStage } from "../runs.js";
+import { getOrCreateUserLabel } from "../users.js";
 
 const STAGE_FOR_TOOL: Record<string, RunStage> = {
   get_market_context: "fetching_context",
@@ -42,10 +44,31 @@ export const chatHandler: JobHandler = async ({ db, job, heartbeat }) => {
   };
 
   try {
+    const lastUser = [...input.messages].reverse().find((message) => message.role === "user");
+    const intent = classifyIntent(lastUser?.content ?? "");
+    record({
+      stage,
+      type: "tool",
+      payload: { type: "tool", name: "classify_intent", output: { intent } },
+    });
+    if (intent === "unsupported") {
+      await chain;
+      await completeRun(db, runId, {
+        proposalId: null,
+        proposalHash: null,
+        ensName: null,
+        taskId: null,
+        rationale:
+          "That request is outside this testnet build. Mainnet, bridges, and unbounded execution are not available. Futures stay simulated and only inside a signed envelope.",
+        receipts: [],
+      });
+      return;
+    }
     const result = await runAgent({
       messages: input.messages,
       owner,
       agent: input.agent,
+      intent,
       cache: new PostgresMarketCache(db as never),
       onEvent: (event) => {
         const next = event.type === "tool" && event.name ? STAGE_FOR_TOOL[event.name] : undefined;
@@ -62,7 +85,7 @@ export const chatHandler: JobHandler = async ({ db, job, heartbeat }) => {
     // A run may legitimately end without a proposal (policy denied the paid
     // analysis, unsupported request, nothing to guard). That is a completed
     // run whose result is the explanation, not a failure.
-    if (!result.uiSpec || !result.market) {
+    if (intent === "research" || intent === "holdings" || !result.uiSpec || !result.market) {
       await completeRun(db, runId, {
         proposalId: null,
         proposalHash: null,
@@ -75,15 +98,27 @@ export const chatHandler: JobHandler = async ({ db, job, heartbeat }) => {
     }
 
     const taskId = randomBytes(4).toString("hex");
-    const userLabel = await getUserLabel(owner);
+    const userLabel = await getOrCreateUserLabel(db, owner);
     const parentName = getParentName();
     const ensName = makeTaskName(taskId, userLabel, parentName);
-    const proposal = { taskId, userLabel, parentName, ensName, owner, agent: input.agent };
+    const template =
+      result.uiSpec.intent === "needs_human"
+        ? "needs_human"
+        : (templateForIntent(intent) ?? "portfolio_guard");
+    const proposal = {
+      taskId,
+      userLabel,
+      parentName,
+      ensName,
+      owner,
+      agent: input.agent,
+      template,
+    };
     await db.insert(tables.tasks).values({
       id: taskId,
       userWallet: owner,
       ensName,
-      template: "portfolio_guard",
+      template,
       status: "draft",
     });
     const { proposalId, hash } = await storeProposal(db, {

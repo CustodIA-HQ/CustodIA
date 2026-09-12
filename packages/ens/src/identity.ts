@@ -6,6 +6,50 @@ export type OwnerAddress = `0x${string}`;
 export const getParentName = (): string =>
   process.env.ENS_PARENT_NAME?.trim().toLowerCase() || "custodia.eth";
 
+const LABEL_RE = /^[a-z0-9]([a-z0-9-]{1,61}[a-z0-9])$/;
+
+const RESERVED_LABELS = new Set([
+  "www",
+  "api",
+  "chat",
+  "guard",
+  "task",
+  "telegram",
+  "holdings",
+  "admin",
+  "operator",
+  "agents",
+  "custodia",
+  "ens",
+  "identity",
+  "wallet",
+  "ux",
+]);
+
+/** Parse `alice` or `alice.custodia.eth` into a label under the parent. */
+export function parseClaimLabel(
+  input: string,
+  parentName = getParentName(),
+): { ok: true; label: string; name: string } | { ok: false; error: string } {
+  const raw = input.trim().toLowerCase();
+  if (!raw) return { ok: false, error: "Enter the ENS name you want." };
+  const parent = parentName.toLowerCase();
+  const label = raw.endsWith(`.${parent}`) ? raw.slice(0, -(parent.length + 1)) : raw;
+  if (label.includes(".")) {
+    return { ok: false, error: `Use a single label under ${parent}, e.g. alice.${parent}` };
+  }
+  if (label.length < 3 || label.length > 63 || !LABEL_RE.test(label)) {
+    return {
+      ok: false,
+      error: "Use 3–63 characters: lowercase letters, numbers, and hyphens (no leading/trailing hyphen).",
+    };
+  }
+  if (RESERVED_LABELS.has(label) || label.startsWith("wallet-")) {
+    return { ok: false, error: `"${label}" is reserved. Pick another name.` };
+  }
+  return { ok: true, label, name: `${label}.${parent}` };
+}
+
 const fallbackLabel = (owner: OwnerAddress): string => `wallet-${owner.slice(2, 10).toLowerCase()}`;
 
 const labelFromEnsName = (name: string | null): string | null => {
@@ -47,8 +91,13 @@ export async function getUserLabel(owner: OwnerAddress): Promise<string> {
   }
 }
 
+export const makeOwnerName = (
+  userLabel: string,
+  parentName = getParentName(),
+): string => `${userLabel}.${parentName}`;
+
 export const makeTaskName = (
   taskId: string,
   userLabel: string,
   parentName = getParentName(),
-): string => `${taskId}.${userLabel}.${parentName}`;
+): string => `${taskId}.${makeOwnerName(userLabel, parentName)}`;

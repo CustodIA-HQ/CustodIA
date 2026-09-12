@@ -7,6 +7,10 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./compose": {
+      "types": "./src/compose.ts",
+      "default": "./src/compose.ts"
     }
   },
   "files": [
@@ -21,8 +25,10 @@
   },
   "dependencies": {
     "@custodia/db": "workspace:*",
+    "@custodia/decision": "workspace:*",
     "@custodia/graph": "workspace:*",
     "@custodia/policy": "workspace:*",
+    "@custodia/registry": "workspace:*",
     "@custodia/schema": "workspace:*",
     "openai": "^7.12.0",
     "viem": "catalog:",

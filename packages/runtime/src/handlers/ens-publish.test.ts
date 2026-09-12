@@ -26,6 +26,10 @@ const owner = "0x2222222222222222222222222222222222222222";
 const agent = "0x1111111111111111111111111111111111111111";
 const market = {
   pair: "ETH/USDC",
+  base: "ETH",
+  quote: "USDC",
+  poolId: "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640",
+  poolName: "Uniswap V3 USD Coin/Wrapped Ether 0.05%",
   priceUsd: 2500,
   realizedVol24hPct: 2,
   tvlUsd: 1,
@@ -114,6 +118,7 @@ it("publishes once, records receipts, activates the task, and is a no-op on rede
     owner,
     agent,
     status: "active",
+    url: "/alice.custodia.eth/abcd1234/portfolio-guard",
   });
   const [task] = await ctx.db.select().from(tables.tasks).where(eq(tables.tasks.id, "abcd1234"));
   expect(task?.status).toBe("active");

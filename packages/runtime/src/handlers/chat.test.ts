@@ -3,7 +3,14 @@ import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ runAgent: vi.fn() }));
-vi.mock("@custodia/agent", () => ({ runAgent: mocks.runAgent }));
+vi.mock("@custodia/agent", () => ({
+  runAgent: mocks.runAgent,
+  classifyIntent: (message: string) => {
+    if (/perp|mainnet/.test(message)) return "unsupported";
+    if (/doing today|what is eth/i.test(message)) return "research";
+    return "guard";
+  },
+}));
 vi.mock("@custodia/ens", async (orig) => ({
   ...(await orig<object>()),
   getUserLabel: async () => "alice",
@@ -19,6 +26,7 @@ let ctx: Awaited<ReturnType<typeof createTestDb>>;
 beforeAll(async () => {
   ctx = await createTestDb();
   process.env.ENS_PARENT_NAME = "custodia.eth";
+  await ctx.db.insert(tables.users).values({ wallet: "0xowner", ensLabel: "alice" });
 });
 afterAll(async () => {
   await ctx.close();
@@ -85,6 +93,37 @@ it("completes without a proposal when the agent ends in an explanation", async (
   const registry = new HandlerRegistry().register("chat.run", chatHandler);
   expect(await tick(ctx.db, registry, "w1")).toBe("ran");
   expect((await loadRun(ctx.db, runId))?.status).toBe("done");
+  const last = (await listEvents(ctx.db, runId)).at(-1);
+  expect(last).toMatchObject({ type: "result", payload: { proposalId: null, taskId: null } });
+  expect(
+    await ctx.db.select().from(tables.proposals).where(eq(tables.proposals.runId, runId)),
+  ).toHaveLength(0);
+});
+
+it("does not mint an ENS task for a research question even if a UI spec is returned", async () => {
+  mocks.runAgent.mockResolvedValue({
+    market: { pair: "ETH/USDC", priceUsd: 2500, hourly: [] },
+    uiSpec: { intent: "configure_portfolio_guard", components: [], rationale: "r" },
+    receipts: [],
+    rationale: "ETH is around $2500 with 6% realized vol.",
+  });
+  const { runId } = await createRun(ctx.db, {
+    conversationId: "c4",
+    ownerWallet: "0xowner",
+    kind: "chat",
+    clientRequestId: "q4",
+    input: {
+      messages: [{ role: "user", content: "What is ETH doing today?" }],
+      agent: "0xagent",
+    },
+  });
+  await enqueueJob(ctx.db, {
+    kind: "chat.run",
+    payload: { runId },
+    dedupeKey: `chat.run:${runId}`,
+  });
+  const registry = new HandlerRegistry().register("chat.run", chatHandler);
+  expect(await tick(ctx.db, registry, "w1")).toBe("ran");
   const last = (await listEvents(ctx.db, runId)).at(-1);
   expect(last).toMatchObject({ type: "result", payload: { proposalId: null, taskId: null } });
   expect(

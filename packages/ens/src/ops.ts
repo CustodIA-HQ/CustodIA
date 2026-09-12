@@ -8,9 +8,10 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { sepolia } from "viem/chains";
-import { resolverAbi, TASK_TEXT_KEYS } from "./abi.js";
+import { OWNER_TEXT_KEYS, resolverAbi, TASK_TEXT_KEYS } from "./abi.js";
 import type { EnsConfig } from "./config.js";
 import { dnsName, node } from "./encode.js";
+import { makeOwnerName, makeTaskName } from "./identity.js";
 
 const STATUS_KEY = "xyz.custodia.status";
 
@@ -28,6 +29,8 @@ export interface TaskRecords {
   chart?: string;
   /** The accepted, schema-validated UI spec for this guard. */
   ui?: string;
+  /** HTTP directory path for the generated UX, stored as the ENS `url` record. */
+  url?: string;
 }
 
 // Local accounts sign here and broadcast a raw tx. A bare hex key would be
@@ -55,6 +58,84 @@ const confirmed = async (
   return hash;
 };
 
+export interface CreateOwnerResult {
+  name: string;
+  recordsTxId: `0x${string}` | null;
+  created: boolean;
+}
+
+/**
+ * createOwnerName — operator-signed. Attaches `{label}.{parent}` as the
+ * wallet's CustodIA identity on first connect. Wildcard subname, no rent.
+ * Idempotent: if the owner record already matches, this is a no-op.
+ */
+export async function createOwnerName(
+  config: EnsConfig,
+  params: { userLabel: string; owner: `0x${string}`; agent: `0x${string}`; url?: string },
+): Promise<CreateOwnerResult> {
+  const name = makeOwnerName(params.userLabel, config.parentName);
+  const pub = publicClient(config);
+  const existing = await pub.getEnsText({ name, key: "xyz.custodia.owner" }).catch(() => null);
+  if (existing && existing.toLowerCase() === params.owner.toLowerCase()) {
+    return { name, recordsTxId: null, created: false };
+  }
+  if (existing) {
+    throw new Error(`${name} is already attached to another wallet`);
+  }
+
+  const wallet = walletClient(config, config.operatorKey);
+  const records: Record<(typeof OWNER_TEXT_KEYS)[number], string> = {
+    "xyz.custodia.owner": params.owner,
+    "xyz.custodia.kind": "identity",
+    "xyz.custodia.agent": params.agent,
+    url: params.url ?? "",
+  };
+  const calls = OWNER_TEXT_KEYS.map((key) =>
+    encodeFunctionData({
+      abi: resolverAbi,
+      functionName: "setText",
+      args: [node(name), key, records[key]],
+    }),
+  );
+  const recordsTxId = await confirmed(
+    pub,
+    await wallet.writeContract({
+      address: config.resolverAddress,
+      abi: resolverAbi,
+      functionName: "multicall",
+      args: [calls],
+    }),
+    "owner setText multicall",
+  );
+  return { name, recordsTxId, created: true };
+}
+
+/** Who owns `{label}.{parent}` on-chain, if anyone. */
+export async function lookupOwnerRecord(
+  config: EnsConfig,
+  name: string,
+): Promise<string | null> {
+  const value = await publicClient(config)
+    .getEnsText({ name, key: "xyz.custodia.owner" })
+    .catch(() => null);
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
+export async function resolveOwner(
+  config: EnsConfig,
+  name: string,
+): Promise<Record<(typeof OWNER_TEXT_KEYS)[number], string | null>> {
+  const client = publicClient(config);
+  const entries = await Promise.all(
+    OWNER_TEXT_KEYS.map(async (key) => {
+      const value = await client.getEnsText({ name, key }).catch(() => null);
+      return [key, value] as const;
+    }),
+  );
+  return Object.fromEntries(entries) as Record<(typeof OWNER_TEXT_KEYS)[number], string | null>;
+}
+
 /**
  * createTask — operator-signed. Writes the four xyz.custodia.* records on the
  * wildcard subname `${taskId}.${userLabel}.${parentName}` in ONE multicall,
@@ -73,7 +154,7 @@ export async function createTask(
     status?: TaskStatus;
   } & TaskRecords,
 ): Promise<CreateTaskResult> {
-  const name = `${params.taskId}.${params.userLabel}.${config.parentName}`;
+  const name = makeTaskName(params.taskId, params.userLabel, config.parentName);
   const wallet = walletClient(config, config.operatorKey);
   const pub = publicClient(config);
 
@@ -84,6 +165,7 @@ export async function createTask(
     "xyz.custodia.status": params.status ?? "draft",
     "xyz.custodia.chart": params.chart ?? "",
     "xyz.custodia.ui": params.ui ?? "",
+    url: params.url ?? "",
   };
   const calls = TASK_TEXT_KEYS.map((key) =>
     encodeFunctionData({

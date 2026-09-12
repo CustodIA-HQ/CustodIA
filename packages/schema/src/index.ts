@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CandidateSchema } from "./capabilities.js";
 
 /**
  * Thrown by any subsystem whose live dependency is not configured.
@@ -27,13 +28,28 @@ const addressField = (): z.ZodType<Address> =>
     "expected a 20-byte hex address (0x…)",
   );
 
+/** Assets that have a USD series from a confirmed Uniswap V3 venue (BTC = WBTC). */
+export const MARKET_ASSETS = ["ETH", "BTC", "LINK", "UNI", "DAI", "USDC", "USDT"] as const;
+export type MarketAsset = (typeof MARKET_ASSETS)[number];
+
+const pairValues = MARKET_ASSETS.flatMap((base) =>
+  MARKET_ASSETS.filter((quote) => quote !== base).map((quote) => `${base}/${quote}`),
+);
+export const MARKET_PAIRS = pairValues as [string, ...string[]];
+export type MarketPair = (typeof MARKET_PAIRS)[number];
+
+export const normalizeMarketPair = (raw: string): string =>
+  raw.trim().toUpperCase().replaceAll("WBTC", "BTC").replaceAll("WETH", "ETH");
+
+export const MarketPairSchema = z.enum(MARKET_PAIRS);
+
 // ── UI the agent may request. Unknown type or out-of-policy bound = ZodError,
 // ── surfaced in chat. Never a default fallback UI. ──────────────────────────
 
 export const ComponentSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("price_chart"),
-    pair: z.literal("ETH/USDC"),
+    pair: MarketPairSchema,
     range: z.enum(["24h", "7d"]),
   }),
   z.object({
@@ -67,11 +83,93 @@ export const ComponentSchema = z.discriminatedUnion("type", [
     risk: z.lazy(() => RiskContextSchema),
     receiptTxId: z.string(),
   }),
+  z.object({
+    type: z.literal("protection_simulation"),
+    deductibleUsd: z.number().nonnegative(),
+    durationDays: z.number().positive(),
+    premiumEstimateUsd: z.number().nonnegative(),
+    labeled: z.literal("model_estimate"),
+  }),
+  z.object({
+    type: z.literal("protection_knobs"),
+    deductiblePct: z.number().nonnegative(),
+    durationDays: z.number().positive(),
+    budgetUsd: z.number().nonnegative(),
+    strikeUsd: z.number().positive(),
+    spotUsd: z.number().positive(),
+  }),
+  z.object({
+    type: z.literal("payoff_chart"),
+    spotUsd: z.number().positive(),
+    strikeUsd: z.number().positive(),
+    premiumUsd: z.number().nonnegative(),
+    notionalUsd: z.number().nonnegative(),
+    points: z
+      .array(
+        z.object({
+          priceUsd: z.number(),
+          unprotectedUsd: z.number(),
+          protectedUsd: z.number(),
+        }),
+      )
+      .min(8),
+  }),
+  z.object({
+    type: z.literal("health_meter"),
+    current: z.number().nonnegative(),
+    threshold: z.number().positive(),
+    liquidation: z.number().positive(),
+    utilizationPct: z.number().nonnegative(),
+    labeled: z.literal("model_estimate"),
+  }),
+  z.object({
+    type: z.literal("execution_preview"),
+    side: z.enum(["buy", "sell"]),
+    base: z.literal("ETH"),
+    quote: z.literal("USDC"),
+    notionalUsd: z.number().nonnegative(),
+    expectedPriceUsd: z.number().positive(),
+    slippageBps: z.number().nonnegative(),
+    poolTvlUsd: z.number().nonnegative(),
+    remainingMandateUsd: z.number(),
+    verdict: z.enum(["inside", "outside"]),
+    reason: z.string(),
+  }),
+  z.object({
+    type: z.literal("leverage_control"),
+    enabled: z.boolean(),
+    maxLeverage: z.number().positive(),
+    stopRequired: z.literal(true),
+    labeled: z.literal("simulated"),
+  }),
+  z.object({
+    type: z.literal("strategy_comparison"),
+    currentEthPct: z.number(),
+    currentUsdcPct: z.number(),
+    candidates: z.array(z.lazy(() => CandidateSchema)).min(1),
+  }),
+  z.object({
+    type: z.literal("human_escalation"),
+    blockedAction: z.string(),
+    reason: z.string(),
+    required: z.literal("wallet_signature"),
+  }),
 ]);
 export type Component = z.infer<typeof ComponentSchema>;
 
+export const UISpecIntentSchema = z.enum([
+  "configure_portfolio_guard",
+  "configure_position_protection",
+  "configure_collateral_guard",
+  "confirm_spot_execution",
+  "confirm_futures_execution",
+  "compare_strategies",
+  "needs_human",
+]);
+export type UISpecIntent = z.infer<typeof UISpecIntentSchema>;
+
 export const UISpecSchema = z.object({
-  intent: z.literal("configure_portfolio_guard"),
+  intent: UISpecIntentSchema,
   components: z.array(ComponentSchema).min(1),
   rationale: z.string(),
 });
@@ -90,6 +188,13 @@ const CONSTRAINT_TYPES = [
   "custodia.max_drawdown_pct.1",
   "custodia.allowed_assets.1",
   "custodia.allow_rebalance.1",
+  "custodia.max_premium_usd.1",
+  "custodia.deductible_pct.1",
+  "custodia.duration_days.1",
+  "custodia.max_slippage_bps.1",
+  "custodia.max_leverage.1",
+  "custodia.min_health_factor.1",
+  "custodia.require_stop.1",
 ] as const;
 
 export const ConstraintTypeSchema = z.enum(CONSTRAINT_TYPES);
@@ -101,6 +206,13 @@ export const ConstraintSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("custodia.max_drawdown_pct.1"), value: z.number() }),
   z.object({ type: z.literal("custodia.allowed_assets.1"), assets: z.array(z.string()) }),
   z.object({ type: z.literal("custodia.allow_rebalance.1"), value: z.boolean() }),
+  z.object({ type: z.literal("custodia.max_premium_usd.1"), value: z.number() }),
+  z.object({ type: z.literal("custodia.deductible_pct.1"), value: z.number() }),
+  z.object({ type: z.literal("custodia.duration_days.1"), value: z.number() }),
+  z.object({ type: z.literal("custodia.max_slippage_bps.1"), value: z.number() }),
+  z.object({ type: z.literal("custodia.max_leverage.1"), value: z.number() }),
+  z.object({ type: z.literal("custodia.min_health_factor.1"), value: z.number() }),
+  z.object({ type: z.literal("custodia.require_stop.1"), value: z.boolean() }),
 ]);
 export type Constraint = z.infer<typeof ConstraintSchema>;
 
@@ -145,7 +257,11 @@ export type PolicyDecision = z.infer<typeof PolicyDecisionSchema>;
 // ── originate from the LLM. ─────────────────────────────────────────────────
 
 export const MarketContextSchema = z.object({
-  pair: z.literal("ETH/USDC"),
+  pair: MarketPairSchema,
+  base: z.string(),
+  quote: z.string(),
+  poolId: z.string(),
+  poolName: z.string(),
   priceUsd: z.number(),
   realizedVol24hPct: z.number(),
   tvlUsd: z.number(),
@@ -172,7 +288,7 @@ export const RiskRequestInputSchema = z.object({
 export type RiskRequestInput = z.infer<typeof RiskRequestInputSchema>;
 
 export const ReceiptSchema = z.object({
-  kind: z.enum(["x402", "ens_tx"]),
+  kind: z.enum(["x402", "ens_tx", "simulated"]),
   txId: z.string(),
   network: z.string(),
   amount: z.string().optional(),
@@ -180,6 +296,7 @@ export const ReceiptSchema = z.object({
 });
 export type Receipt = z.infer<typeof ReceiptSchema>;
 
+export * from "./capabilities.js";
 // Task lifecycle v2 (seven states, actor-gated transitions) — see lifecycle.ts
 export * from "./lifecycle.js";
 
