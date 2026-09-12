@@ -93,7 +93,7 @@ const main = async () => {
   );
 
   console.log("agent writes status on A (should succeed)…");
-  const okA = await setStatus(config, a.name, "needs-human");
+  const okA = await setStatus(config, a.name, "needs_human");
   console.log(`  ✓ write succeeded tx=${okA.txId}`);
   console.log(`  🔗 ${explorer(okA.txId)}`);
 
@@ -110,7 +110,7 @@ const main = async () => {
   );
 
   console.log("agent writes status on B (sibling — must still work)…");
-  const okB = await setStatus(config, b.name, "needs-human");
+  const okB = await setStatus(config, b.name, "needs_human");
   console.log(`  ✓ write succeeded tx=${okB.txId}`);
   console.log(`  🔗 ${explorer(okB.txId)}`);
 

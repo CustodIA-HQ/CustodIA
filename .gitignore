@@ -1,8 +1,12 @@
 # Local tool state
-archive/
-.claude/
-.commandcode/
-.codemeter/
+/archive/
+/.claude/
+/.commandcode/
+/.codemeter/
+/.agent/
+/.agents/
+/agent/
+/skills-lock.json
 
 # Secrets — only the example template is tracked
 .env

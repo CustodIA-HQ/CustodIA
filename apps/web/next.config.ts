@@ -16,6 +16,7 @@ const nextConfig: NextConfig = {
     "@custodia/graph",
     "@custodia/ens",
     "@custodia/agent",
+    "@custodia/decision",
     "@custodia/db",
   ],
 };

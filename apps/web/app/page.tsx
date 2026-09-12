@@ -1,219 +1,132 @@
-import Image from "next/image";
-import ChatSection from "./chat-section";
+import Link from "next/link";
+import { PRODUCT_CASES } from "./cases";
+import { GeneratedUx } from "./components/generated-ux";
+import { SiteFooter, SiteHeader } from "./components/site-header";
+import { demoMarket, demoSpec } from "./ux/samples";
 
 export default function Home() {
+  const proof = demoSpec("position_protection");
+
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        background: "linear-gradient(135deg, #0a0f1e 0%, #0d1a2e 60%, #071218 100%)",
-        color: "#e2f0ff",
-        margin: 0,
-        padding: 0,
-      }}
-    >
-      {/* ── Nav ── */}
-      <nav
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "1.25rem 2.5rem",
-          borderBottom: "1px solid rgba(0,212,180,0.12)",
-          position: "sticky",
-          top: 0,
-          zIndex: 10,
-          background: "rgba(10,15,30,0.85)",
-          backdropFilter: "blur(12px)",
-        }}
-      >
-        <span
-          style={{
-            textTransform: "uppercase",
-            letterSpacing: "0.22em",
-            fontSize: 11,
-            fontWeight: 700,
-            color: "#00d4b4",
-          }}
-        >
-          CustodIA
-        </span>
-        <div className="nav-meta">
-          <a className="nav-chat-link" href="#chat">
-            Open chat
-          </a>
-          <span
-            style={{
-              fontSize: 12,
-              color: "rgba(226,240,255,0.35)",
-              letterSpacing: "0.05em",
-            }}
-          >
-            ETHOnline 2026
-          </span>
+    <main className="home" id="main">
+      <SiteHeader active="home" />
+
+      <section className="home-hero">
+        <div className="home-hero__copy">
+          <h1>
+            The agent proposes.
+            <br />
+            You sign the boundary.
+            <br />
+            Policy enforces it.
+          </h1>
+          <p>
+            Write an intent in chat. Market questions stay in the thread. Protection and guards
+            become a signed mandate at <strong>you.custodia.eth/task-hash/name</strong>. Live
+            ETH/USDC from The Graph; paid risk context on Hedera.
+          </p>
+          <div className="home-hero__actions">
+            <Link className="btn-primary" href="/chat">
+              Open chat
+            </Link>
+            <Link className="btn-ghost" href="/ux">
+              See generated UX
+            </Link>
+          </div>
+          <p className="home-hero__note">
+            Sepolia and Hedera testnet. Test tokens have no value. Execution is simulated.
+          </p>
         </div>
-      </nav>
+        <aside className="home-hero__proof" aria-label="Sample generated protection interface">
+          <p className="home-hero__proof-label">
+            Sample · alice.custodia.eth/demo/position-protection
+          </p>
+          <GeneratedUx spec={proof} market={demoMarket} />
+        </aside>
+      </section>
 
-      {/* ── Hero Image ── */}
-      <div style={{ position: "relative", width: "100%", height: 420, overflow: "hidden" }}>
-        <Image
-          src="/hero.jpg"
-          alt="CustodIA — AI-powered autonomous finance runtime with blockchain security shields"
-          fill
-          priority
-          style={{ objectFit: "cover", objectPosition: "center 30%" }}
-        />
-        {/* Bottom fade so content blends into dark background */}
-        <div
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: "50%",
-            background: "linear-gradient(to bottom, transparent, #0a0f1e)",
-          }}
-        />
-      </div>
+      <section className="home-loop">
+        <h2>How a task is born</h2>
+        <ol>
+          <li>
+            <strong>Sign</strong>
+            <span>
+              Wallet proves control of this conversation. Then you claim a name under custodia.eth.
+            </span>
+          </li>
+          <li>
+            <strong>Research</strong>
+            <span>Live Uniswap V3 data from The Graph. Paid risk context over x402 on Hedera.</span>
+          </li>
+          <li>
+            <strong>Generate</strong>
+            <span>
+              The platform renders a typed UI. The model never writes HTML or its own limits.
+            </span>
+          </li>
+          <li>
+            <strong>Publish</strong>
+            <span>
+              You sign the mandate. ENS records and a directory URL go on the task subname.
+            </span>
+          </li>
+        </ol>
+      </section>
 
-      {/* ── Content ── */}
-      <div
-        style={{
-          maxWidth: 760,
-          margin: "0 auto",
-          padding: "2rem 2rem 4rem",
-        }}
-      >
-        <p
-          style={{
-            textTransform: "uppercase",
-            letterSpacing: "0.22em",
-            fontSize: 11,
-            fontWeight: 700,
-            color: "#00d4b4",
-            margin: "0 0 0.75rem",
-          }}
-        >
-          Universal Agentic Finance Runtime
-        </p>
-
-        {/* gradient-text uses the CSS class to avoid hydration mismatch */}
-        <h1
-          className="gradient-text"
-          style={{
-            fontSize: "clamp(1.8rem, 5vw, 2.8rem)",
-            fontWeight: 800,
-            lineHeight: 1.18,
-            margin: "0 0 1.25rem",
-          }}
-        >
-          The agent proposes.
-          <br />
-          The human sets the boundary.
-          <br />
-          The policy enforces it.
-        </h1>
-
-        <p
-          style={{
-            color: "rgba(226,240,255,0.58)",
-            lineHeight: 1.75,
-            fontSize: 16,
-            maxWidth: 600,
-            margin: "0 0 2.5rem",
-          }}
-        >
-          A conversational runtime that turns a vague financial intent into a bounded, revocable,
-          machine-executable mandate — powered by{" "}
-          <span style={{ color: "#00d4b4" }}>The Graph</span>,{" "}
-          <span style={{ color: "#00d4b4" }}>Hedera x402</span> and{" "}
-          <span style={{ color: "#00d4b4" }}>ENSv2</span>.
-        </p>
-
-        {/* ── Status pill ── */}
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 8,
-            background: "rgba(0,212,180,0.07)",
-            border: "1px solid rgba(0,212,180,0.22)",
-            borderRadius: 999,
-            padding: "0.45rem 1.1rem",
-            fontSize: 13,
-            color: "rgba(226,240,255,0.5)",
-            marginBottom: "2.5rem",
-          }}
-        >
-          <span
-            style={{
-              width: 7,
-              height: 7,
-              borderRadius: "50%",
-              background: "#00d4b4",
-              boxShadow: "0 0 8px #00d4b4",
-              flexShrink: 0,
-            }}
-          />
-          Chat surface ready — agent route is live
+      <section className="home-cases">
+        <div className="home-cases__intro">
+          <h2>Every case has an interface</h2>
+          <p>
+            Protection, portfolio, collateral, spot, futures, comparison, and a hard stop when the
+            action is outside the envelope. Ask in chat or open a sample.
+          </p>
         </div>
-
-        {/* ── Sponsor cards ── */}
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          {[
-            { label: "ENSv2", sub: "Identity & Delegation", track: "Sepolia" },
-            { label: "The Graph", sub: "Live Market Intelligence", track: "Subgraph" },
-            { label: "Hedera x402", sub: "Agentic Payments", track: "Testnet" },
-          ].map(({ label, sub, track }) => (
-            <div
-              key={label}
-              style={{
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(0,212,180,0.16)",
-                borderRadius: 10,
-                padding: "0.8rem 1.25rem",
-                minWidth: 160,
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#e2f0ff" }}>{label}</span>
-                <span
-                  style={{
-                    fontSize: 9,
-                    fontWeight: 700,
-                    color: "#00d4b4",
-                    background: "rgba(0,212,180,0.1)",
-                    borderRadius: 4,
-                    padding: "1px 5px",
-                    letterSpacing: "0.05em",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  {track}
-                </span>
-              </div>
-              <div style={{ fontSize: 11, color: "rgba(226,240,255,0.38)" }}>{sub}</div>
-            </div>
+        <ul className="home-cases__list">
+          {PRODUCT_CASES.map((item) => (
+            <li key={item.template}>
+              <a href={item.href}>
+                <strong>{item.title}</strong>
+                <span>{item.prompt}</span>
+              </a>
+            </li>
           ))}
-        </div>
-      </div>
+        </ul>
+      </section>
 
-      <ChatSection />
+      <section className="home-rails">
+        <h2>What has to be real</h2>
+        <dl>
+          <div>
+            <dt>ENSv2</dt>
+            <dd>
+              Owner name plus a task subname. Agent rights are scoped. Revoke one task, siblings
+              stay.
+            </dd>
+          </div>
+          <div>
+            <dt>The Graph</dt>
+            <dd>
+              Price, realized volatility, and pool depth change the generated UI — not a decorative
+              chart.
+            </dd>
+          </div>
+          <div>
+            <dt>Hedera x402</dt>
+            <dd>
+              The agent pays for risk context it actually uses. Receipt sits in the audit trail.
+            </dd>
+          </div>
+        </dl>
+      </section>
 
-      {/* ── Footer ── */}
-      <div
-        style={{
-          borderTop: "1px solid rgba(0,212,180,0.08)",
-          padding: "1.25rem 2.5rem",
-          textAlign: "center",
-          fontSize: 11,
-          color: "rgba(226,240,255,0.2)",
-          letterSpacing: "0.06em",
-          textTransform: "uppercase",
-        }}
-      >
-        ETHOnline 2026 · ENS · The Graph · Hedera
-      </div>
+      <section className="home-close">
+        <h2>The agent can propose more risk. It cannot authorize it.</h2>
+        <a className="btn-primary" href="/chat">
+          Sign a conversation
+        </a>
+      </section>
+
+      <SiteFooter />
     </main>
   );
 }

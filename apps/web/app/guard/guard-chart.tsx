@@ -1,34 +1,51 @@
 import type { MarketContext } from "@custodia/schema";
+import { formatFiat, formatTokenAmount } from "../format-number";
+import {
+  CHART_LAYOUT,
+  type ChartOverlay,
+  type ChartRange,
+  chartScale,
+  hoursForRange,
+} from "../ux/chart-overlays";
 
-const formatUsd = (value: number): string =>
-  new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: value >= 1_000 ? 0 : 2,
-  }).format(value);
+const USD_QUOTES = new Set(["USDC", "USDT", "DAI"]);
+
+const formatPrice = (value: number, quote?: string): string => {
+  if (!quote || USD_QUOTES.has(quote)) {
+    return formatFiat(value, value >= 1_000 ? "compact" : "detailed").display;
+  }
+  return `${formatTokenAmount(value, undefined, "detailed").display} ${quote}`;
+};
 
 export default function GuardChart({
   market,
   range,
+  overlays,
+  source,
 }: {
-  market: Pick<MarketContext, "pair" | "priceUsd" | "hourly">;
-  range: "24h" | "7d";
+  market: Pick<MarketContext, "pair" | "priceUsd" | "hourly"> & { quote?: string };
+  range: ChartRange;
+  overlays?: ChartOverlay[];
+  source?: "live" | "sample";
 }) {
-  const requestedHours = range === "7d" ? 7 * 24 : 24;
-  const points = market.hourly.slice(-requestedHours);
-  const values = points.map((point) => point.close);
-  const low = Math.min(...values);
-  const high = Math.max(...values);
-  const spread = Math.max(high - low, high * 0.001, 0.01);
-  const chartWidth = 720;
-  const chartHeight = 250;
-  const padding = { top: 20, right: 18, bottom: 28, left: 18 };
-  const innerWidth = chartWidth - padding.left - padding.right;
-  const innerHeight = chartHeight - padding.top - padding.bottom;
-  const x = (index: number) =>
-    padding.left +
-    (points.length === 1 ? innerWidth / 2 : (index / (points.length - 1)) * innerWidth);
-  const y = (value: number) => padding.top + ((high - value) / spread) * innerHeight;
+  const overlayRows = overlays ?? [];
+  const requestedHours = hoursForRange(range);
+  const scale = chartScale(
+    market.hourly,
+    range,
+    overlayRows.map((row) => row.priceUsd),
+  );
+  const { points, high, spread, innerHeight, x, y } = scale;
+  if (points.length === 0) {
+    return (
+      <figure className="guard-chart">
+        <p className="guard-page__muted">No hourly series to chart.</p>
+      </figure>
+    );
+  }
+  const chartWidth = CHART_LAYOUT.width;
+  const chartHeight = CHART_LAYOUT.height;
+  const padding = CHART_LAYOUT.padding;
   const line = points
     .map((point, index) => `${x(index).toFixed(2)},${y(point.close).toFixed(2)}`)
     .join(" ");
@@ -37,16 +54,21 @@ export default function GuardChart({
   const last = points.at(-1);
   const coverage =
     points.length >= requestedHours ? `${range} history` : `${points.length} hourly closes`;
+  const floor = overlayRows.find((row) => row.id === "floor");
+  const envelope = overlayRows.find((row) => row.id === "envelope");
+  const notional = overlayRows.find((row) => row.id === "notional");
 
   return (
     <figure className="guard-chart">
       <div className="guard-chart__heading">
         <div>
-          <p className="guard-card__eyebrow">Live market context</p>
+          <p className="guard-card__eyebrow">
+            {source === "sample" ? "Sample market context" : "Live market context"}
+          </p>
           <h4>{market.pair}</h4>
         </div>
         <div className="guard-chart__latest">
-          <strong>{formatUsd(last?.close ?? market.priceUsd)}</strong>
+          <strong>{formatPrice(last?.close ?? market.priceUsd, market.quote)}</strong>
           <span>{coverage}</span>
         </div>
       </div>
@@ -71,7 +93,7 @@ export default function GuardChart({
                 className="guard-chart__grid"
               />
               <text x={padding.left} y={gridY - 5} className="guard-chart__axis">
-                {formatUsd(gridValue)}
+                {formatPrice(gridValue, market.quote)}
               </text>
             </g>
           );
@@ -84,7 +106,83 @@ export default function GuardChart({
           r="4"
           className="guard-chart__dot"
         />
+        {floor && (
+          <g className="guard-chart__overlay" data-overlay="floor">
+            <line
+              x1={padding.left}
+              x2={chartWidth - padding.right}
+              y1={y(floor.priceUsd)}
+              y2={y(floor.priceUsd)}
+              className="guard-chart__floor"
+            />
+            <text
+              x={chartWidth - padding.right}
+              y={y(floor.priceUsd) - 6}
+              className="guard-chart__overlay-label"
+              textAnchor="end"
+            >
+              {floor.label}
+            </text>
+          </g>
+        )}
+        {envelope && (
+          <text
+            x={envelope.x}
+            y={Math.max(padding.top + 12, y(envelope.priceUsd) - 14)}
+            className="guard-chart__overlay-label guard-chart__overlay-label--envelope"
+            textAnchor="end"
+            data-overlay="envelope"
+          >
+            {envelope.label}
+          </text>
+        )}
+        {notional && (
+          <text
+            x={notional.x}
+            y={Math.min(
+              chartHeight - padding.bottom - 4,
+              y(notional.priceUsd) + (notional.outside ? 28 : 18),
+            )}
+            className={
+              notional.outside
+                ? "guard-chart__overlay-label guard-chart__overlay-label--outside"
+                : "guard-chart__overlay-label"
+            }
+            textAnchor="end"
+            data-overlay="notional"
+          >
+            {notional.label}
+          </text>
+        )}
       </svg>
+      {overlayRows.length > 0 && (
+        <ul className="guard-chart__key">
+          {floor && (
+            <li data-key="floor">
+              <span className="guard-chart__swatch guard-chart__swatch--floor" />
+              {floor.label}
+            </li>
+          )}
+          {envelope && (
+            <li data-key="envelope">
+              <span className="guard-chart__swatch guard-chart__swatch--envelope" />
+              {envelope.label}
+            </li>
+          )}
+          {notional && (
+            <li data-key="notional">
+              <span
+                className={
+                  notional.outside
+                    ? "guard-chart__swatch guard-chart__swatch--outside"
+                    : "guard-chart__swatch"
+                }
+              />
+              {notional.label}
+            </li>
+          )}
+        </ul>
+      )}
       <div className="guard-chart__dates">
         <span>
           {first

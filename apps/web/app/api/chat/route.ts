@@ -1,13 +1,12 @@
 import "../../env";
 
-import { randomBytes } from "node:crypto";
-import { type RunAgentEvent, runAgent } from "@custodia/agent";
-import { createDb, PostgresMarketCache } from "@custodia/db";
+import { createDb } from "@custodia/db";
+import { createRun, enqueueJob } from "@custodia/runtime";
 import { NotImplementedError } from "@custodia/schema";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { sessionForRequest } from "../auth/session";
-import { getAgentAddress, getParentName, getUserLabel, makeTaskName } from "../identity";
+import { getAgentAddress } from "../identity";
 
 const MAX_MESSAGE_LENGTH = 4_000;
 const MAX_HISTORY_LENGTH = 24;
@@ -15,7 +14,9 @@ const MAX_HISTORY_LENGTH = 24;
 const ChatMessageSchema = z
   .object({
     role: z.enum(["user", "assistant"]),
-    content: z.string().trim().min(1).max(MAX_MESSAGE_LENGTH),
+    // Empty strings are UI cards (snapshot / options / market). Drop them
+    // after parse — rejecting the whole request breaks the next user turn.
+    content: z.string().max(MAX_MESSAGE_LENGTH),
   })
   .strict();
 
@@ -23,19 +24,23 @@ const ChatRequestSchema = z
   .object({
     message: z.string().trim().min(1).max(MAX_MESSAGE_LENGTH),
     conversationId: z.string().uuid(),
+    /** Client-generated idempotency key: a retry with the same id returns the same run. */
+    clientRequestId: z.string().uuid(),
     messages: z.array(ChatMessageSchema).max(MAX_HISTORY_LENGTH).optional(),
   })
   .strict();
 
-let marketCache: PostgresMarketCache | undefined;
-
-const getMarketCache = (): PostgresMarketCache => {
-  marketCache ??= new PostgresMarketCache(createDb());
-  return marketCache;
+let db: ReturnType<typeof createDb> | undefined;
+const getDb = () => {
+  db ??= createDb();
+  return db;
 };
 
 const errorMessage = (error: unknown): string => {
   const message = error instanceof Error ? error.message : "The agent request failed";
+  if (message.includes("bad indexers") || message.includes("AbortError")) {
+    return "The market data provider is temporarily unavailable. Please retry in a few seconds.";
+  }
   return [
     "OPENAI_API_KEY",
     "GRAPH_STUDIO_KEY",
@@ -54,9 +59,9 @@ const isMissingConfiguration = (error: unknown): boolean =>
   (error instanceof Error && error.name === "NotImplementedError");
 
 /**
- * POST /api/chat — runs the agent's bounded research and risk loop.
- * Tool activity is collected with the final text, market context, UISpec and
- * receipts so the client can render the live chart before the ENS handoff.
+ * POST /api/chat — authenticates, persists the request as a durable run and
+ * returns 202 { runId }. The worker executes it; progress is read from
+ * GET /api/runs/:id/events.
  */
 export async function POST(request: Request) {
   let rawBody: unknown;
@@ -91,51 +96,34 @@ export async function POST(request: Request) {
       );
     }
     const owner = session.address;
-    const suppliedMessages = parsed.data.messages ?? [];
+    const suppliedMessages = (parsed.data.messages ?? [])
+      .map((entry) => ({ role: entry.role, content: entry.content.trim() }))
+      .filter((entry) => entry.content.length > 0);
     const lastMessage = suppliedMessages.at(-1);
     const withPrompt =
       lastMessage?.role === "user" && lastMessage.content === parsed.data.message
         ? suppliedMessages
         : [...suppliedMessages, { role: "user" as const, content: parsed.data.message }];
     const messages = withPrompt.slice(-MAX_HISTORY_LENGTH);
-    const events: RunAgentEvent[] = [];
-    let text = "";
 
-    const result = await runAgent({
-      messages,
-      owner,
-      agent,
-      cache: getMarketCache(),
-      onEvent: (event) => {
-        events.push(event);
-        if (event.type === "text") text += event.delta ?? "";
-      },
+    // Persist first, then enqueue: the worker runs the agent, the client polls
+    // /api/runs/:id/events. Duplicate delivery (same clientRequestId) returns
+    // the existing run and enqueues nothing.
+    const { runId, created } = await createRun(getDb(), {
+      conversationId: parsed.data.conversationId,
+      ownerWallet: owner,
+      kind: "chat",
+      clientRequestId: parsed.data.clientRequestId,
+      input: { messages, agent },
     });
-
-    const message = text.trim() || result.rationale.trim();
-    if (!message) {
-      return NextResponse.json(
-        { error: "The agent finished without a text response", events, ...result },
-        { status: 502 },
-      );
+    if (created) {
+      await enqueueJob(getDb(), {
+        kind: "chat.run",
+        payload: { runId },
+        dedupeKey: `chat.run:${runId}`,
+      });
     }
-
-    const taskId = randomBytes(4).toString("hex");
-    const userLabel = await getUserLabel(owner);
-    const parentName = getParentName();
-    const ensName = makeTaskName(taskId, userLabel, parentName);
-
-    return NextResponse.json({
-      message,
-      owner,
-      agent,
-      events,
-      market: result.market,
-      uiSpec: result.uiSpec,
-      receipts: result.receipts,
-      rationale: result.rationale,
-      proposal: { taskId, userLabel, parentName, ensName, owner, agent },
-    });
+    return NextResponse.json({ runId, created }, { status: 202 });
   } catch (error) {
     const message = errorMessage(error);
     console.error(`[chat] ${message}`);

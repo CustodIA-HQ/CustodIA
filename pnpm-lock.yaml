@@ -22,7 +22,7 @@ catalogs:
       specifier: ^4.13.0
       version: 4.13.7
     viem:
-      specifier: ^2.56.0
+      specifier: ^2.56.3
       version: 2.56.3
     zod:
       specifier: ^4.0.0
@@ -31,6 +31,13 @@ catalogs:
 importers:
 
   .:
+    dependencies:
+      '@x402/core':
+        specifier: ^2.25.0
+        version: 2.25.0
+      '@x402/hedera':
+        specifier: 'catalog:'
+        version: 2.25.0(ansi-regex@6.2.2)(ansi-styles@6.2.3)(bn.js@5.2.3)(bufferutil@4.1.0)(debug@4.4.1(supports-color@8.1.1))(protobufjs@8.0.1)(react-native@0.87.1(@babel/core@7.29.7(supports-color@8.1.1))(@types/react@19.2.18)(bufferutil@4.1.0)(react@19.2.8)(supports-color@8.1.1)(utf-8-validate@5.0.10))(strip-ansi@7.1.2)(supports-color@8.1.1)(utf-8-validate@5.0.10)
     devDependencies:
       '@biomejs/biome':
         specifier: ^2.0.0
@@ -114,15 +121,36 @@ importers:
       '@custodia/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@custodia/decision':
+        specifier: workspace:*
+        version: link:../../packages/decision
       '@custodia/ens':
         specifier: workspace:*
         version: link:../../packages/ens
+      '@custodia/graph':
+        specifier: workspace:*
+        version: link:../../packages/graph
+      '@custodia/policy':
+        specifier: workspace:*
+        version: link:../../packages/policy
+      '@custodia/registry':
+        specifier: workspace:*
+        version: link:../../packages/registry
+      '@custodia/runtime':
+        specifier: workspace:*
+        version: link:../../packages/runtime
       '@custodia/schema':
         specifier: workspace:*
         version: link:../../packages/schema
       dotenv:
         specifier: ^17.0.0
         version: 17.4.2
+      drizzle-orm:
+        specifier: ^0.44.7
+        version: 0.44.7(@electric-sql/pglite@0.5.8)(@neondatabase/serverless@1.1.0)
+      grammy:
+        specifier: ^1.46.0
+        version: 1.46.0(supports-color@8.1.1)
       next:
         specifier: ^15.3.0
         version: 15.5.25(@babel/core@7.29.7(supports-color@8.1.1))(@types/node@24.13.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -152,20 +180,45 @@ importers:
         specifier: ^5.9.0
         version: 5.9.3
 
+  apps/worker:
+    dependencies:
+      '@custodia/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@custodia/runtime':
+        specifier: workspace:*
+        version: link:../../packages/runtime
+      dotenv:
+        specifier: ^17.4.2
+        version: 17.4.2
+    devDependencies:
+      tsx:
+        specifier: ^4.19.0
+        version: 4.23.13
+
   packages/agent:
     dependencies:
       '@custodia/db':
         specifier: workspace:*
         version: link:../db
+      '@custodia/decision':
+        specifier: workspace:*
+        version: link:../decision
       '@custodia/graph':
         specifier: workspace:*
         version: link:../graph
       '@custodia/policy':
         specifier: workspace:*
         version: link:../policy
+      '@custodia/registry':
+        specifier: workspace:*
+        version: link:../registry
       '@custodia/schema':
         specifier: workspace:*
         version: link:../schema
+      '@hiero-ledger/sdk':
+        specifier: 2.87.0
+        version: 2.87.0(bn.js@5.2.3)(bufferutil@4.1.0)(supports-color@8.1.1)(utf-8-validate@5.0.10)
       openai:
         specifier: ^7.12.0
         version: 7.12.1(ws@8.21.3(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.5.4)
@@ -186,14 +239,29 @@ importers:
         version: 1.1.0
       drizzle-orm:
         specifier: ^0.44.0
-        version: 0.44.7(@neondatabase/serverless@1.1.0)
+        version: 0.44.7(@electric-sql/pglite@0.5.8)(@neondatabase/serverless@1.1.0)
+      ws:
+        specifier: ^8.21.3
+        version: 8.21.3(bufferutil@4.1.0)(utf-8-validate@5.0.10)
     devDependencies:
+      '@electric-sql/pglite':
+        specifier: ^0.5.8
+        version: 0.5.8
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1
       dotenv:
         specifier: ^17.4.2
         version: 17.4.2
       drizzle-kit:
         specifier: ^0.31.0
         version: 0.31.10
+
+  packages/decision:
+    dependencies:
+      '@custodia/schema':
+        specifier: workspace:*
+        version: link:../schema
 
   packages/ens:
     dependencies:
@@ -233,10 +301,40 @@ importers:
       '@custodia/schema':
         specifier: workspace:*
         version: link:../schema
+      viem:
+        specifier: 'catalog:'
+        version: 2.56.3(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.5.4)
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^3.2.0
         version: 3.2.7(supports-color@8.1.1)(vitest@3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(supports-color@8.1.1)(terser@5.51.2)(tsx@4.23.13))
+
+  packages/registry:
+    dependencies:
+      '@custodia/schema':
+        specifier: workspace:*
+        version: link:../schema
+
+  packages/runtime:
+    dependencies:
+      '@custodia/agent':
+        specifier: workspace:*
+        version: link:../agent
+      '@custodia/db':
+        specifier: workspace:*
+        version: link:../db
+      '@custodia/ens':
+        specifier: workspace:*
+        version: link:../ens
+      '@custodia/schema':
+        specifier: workspace:*
+        version: link:../schema
+      drizzle-orm:
+        specifier: ^0.44.0
+        version: 0.44.7(@electric-sql/pglite@0.5.8)(@neondatabase/serverless@1.1.0)
+      viem:
+        specifier: 'catalog:'
+        version: 2.56.3(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.5.4)
 
   packages/schema:
     dependencies:
@@ -264,6 +362,9 @@ importers:
       '@custodia/policy':
         specifier: workspace:*
         version: link:../packages/policy
+      '@custodia/runtime':
+        specifier: workspace:*
+        version: link:../packages/runtime
       '@custodia/schema':
         specifier: workspace:*
         version: link:../packages/schema
@@ -273,6 +374,9 @@ importers:
       dotenv:
         specifier: ^17.0.0
         version: 17.4.2
+      drizzle-orm:
+        specifier: ^0.44.7
+        version: 0.44.7(@electric-sql/pglite@0.5.8)(@neondatabase/serverless@1.1.0)
       graphql-request:
         specifier: ^7.1.0
         version: 7.4.0(graphql@16.14.2)
@@ -480,6 +584,9 @@ packages:
     engines: {bun: '>=1', deno: '>=2.7.10', node: '>=16'}
     peerDependencies:
       '@noble/ciphers': ^1.0.0
+
+  '@electric-sql/pglite@0.5.8':
+    resolution: {integrity: sha512-n9tsbUOhwx2epK1V0ZG9Ar4SHWUju04dhmzZXiSBXwBoleOvIfals33NAaWgagQVAL4Rbvx/Ptsu3P+pA09f6Q==}
 
   '@emnapi/runtime@1.11.3':
     resolution: {integrity: sha512-Xz4Tpyki7XyrpbUK1jR1AhdAdaXyhhY4lZ3neLodmhpuWfy2PAQN5B46sAiU4liOXGLkHypn/qU+jvfWSCYYLA==}
@@ -964,6 +1071,9 @@ packages:
     resolution: {integrity: sha512-Z4aHi3ECFf5oWYWM3F1rW83GJfB9OvhBYPTmb5q+VyK3uvzvS48lwo+jwh2eOoCRWEuT/crpb9Vwp2QaS5JqgQ==}
     peerDependencies:
       viem: '>=2.0.0'
+
+  '@grammyjs/types@5.0.0':
+    resolution: {integrity: sha512-iq1Qrq1iPKkB8yAa0qSuIURMZOCuqTY5pWy5gHpCeL1oQ+GPadGhw/cDTVE8waJwuCzacUzuIjRv1sESvk7u7A==}
 
   '@graphql-typed-document-node/core@3.2.0':
     resolution: {integrity: sha512-mB9oAsNCm9aM3/SOv4YtBMqZbYj10R7dkq8byBqxGY/ncFwhf2oQzMV+LCRlWoDSEBJ3COiR1yeDvMtsoOsuFQ==}
@@ -2877,6 +2987,9 @@ packages:
   '@types/trusted-types@2.0.7':
     resolution: {integrity: sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==}
 
+  '@types/ws@8.18.1':
+    resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
+
   '@types/yargs-parser@21.0.3':
     resolution: {integrity: sha512-I4q9QU9MQv4oEOz4tAHJtNz1cwuLxn2F3xcc2iV5WdqLPpUnj30aUuxt1mAxYTG+oe8CZMV/+6rU4S4gRDzqtQ==}
 
@@ -3182,6 +3295,10 @@ packages:
         optional: true
       zod:
         optional: true
+
+  abort-controller@3.0.0:
+    resolution: {integrity: sha512-h8lQ8tacZYnR3vNQTgibj+tODHI5/+l06Au2Pcriv/Gmet0eaj4TwWH41sO9wnHDiQsEj19q0drzdWdeAHtweg==}
+    engines: {node: '>=6.5'}
 
   accepts@2.0.0:
     resolution: {integrity: sha512-5cvg6CtKwfgdmVqY1WIiXKc3Q1bkRqGLi+2W/6ao+6Y7gu/RCwRuAhGEzh5B4KlszSuTLgZYuqFqo5bImjNKng==}
@@ -3860,6 +3977,10 @@ packages:
     resolution: {integrity: sha512-U1wulmetNymijEhpSEQ7Ct/P/Jw9/e7R1j5XIbPRydgV2DjLVMsULDlNksq3RQnFgKoLlZf88ijYtWEXcPa07A==}
     engines: {node: '>=14.0.0'}
 
+  event-target-shim@5.0.1:
+    resolution: {integrity: sha512-i/2XbnSz/uxRCU6+NdVJgKWDTM427+MqYbkQzD321DuCQJUqOuJKIA0IM2+W2xtYHdKOmZ4dR6fExsd4SXL+WQ==}
+    engines: {node: '>=6'}
+
   eventemitter2@6.4.9:
     resolution: {integrity: sha512-JEPTiaOt9f04oa6NOkc4aH+nVp5I3wEjpHbIPqfgCdD5v5bUzy7xQqwcVO2aDQgOWhI28da57HksMrzK9HlRxg==}
 
@@ -4013,6 +4134,10 @@ packages:
 
   graceful-fs@4.2.11:
     resolution: {integrity: sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==}
+
+  grammy@1.46.0:
+    resolution: {integrity: sha512-/8Qw+iisrUdOMk+p2mjEHouMm/BBdBEN1DHh16wiTpRUZkxDG3PxexdjCvR+wvK3LWPdrEvnQbdrwpU954sPhg==}
+    engines: {node: ^12.20.0 || >=14.13.1}
 
   graphql-request@7.4.0:
     resolution: {integrity: sha512-xfr+zFb/QYbs4l4ty0dltqiXIp07U6sl+tOKAb0t50/EnQek6CVVBLjETXi+FghElytvgaAWtIOt3EV7zLzIAQ==}
@@ -6067,6 +6192,8 @@ snapshots:
     dependencies:
       '@noble/ciphers': 1.3.0
 
+  '@electric-sql/pglite@0.5.8': {}
+
   '@emnapi/runtime@1.11.3':
     dependencies:
       tslib: 2.8.1
@@ -6341,6 +6468,8 @@ snapshots:
       viem: 2.56.3(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.5.4)
     transitivePeerDependencies:
       - supports-color
+
+  '@grammyjs/types@5.0.0': {}
 
   '@graphql-typed-document-node/core@3.2.0(graphql@16.14.2)':
     dependencies:
@@ -7430,7 +7559,7 @@ snapshots:
 
   '@scure/bip32@1.7.0':
     dependencies:
-      '@noble/curves': 1.9.1
+      '@noble/curves': 1.9.7
       '@noble/hashes': 1.8.0
       '@scure/base': 1.2.6
 
@@ -8767,6 +8896,10 @@ snapshots:
 
   '@types/trusted-types@2.0.7': {}
 
+  '@types/ws@8.18.1':
+    dependencies:
+      '@types/node': 24.13.3
+
   '@types/yargs-parser@21.0.3': {}
 
   '@types/yargs@17.0.35':
@@ -9894,10 +10027,24 @@ snapshots:
       typescript: 5.9.3
       zod: 4.5.4
 
+  abitype@1.3.0(typescript@5.9.3)(zod@3.22.4):
+    optionalDependencies:
+      typescript: 5.9.3
+      zod: 3.22.4
+
+  abitype@1.3.0(typescript@5.9.3)(zod@3.25.76):
+    optionalDependencies:
+      typescript: 5.9.3
+      zod: 3.25.76
+
   abitype@1.3.0(typescript@5.9.3)(zod@4.5.4):
     optionalDependencies:
       typescript: 5.9.3
       zod: 4.5.4
+
+  abort-controller@3.0.0:
+    dependencies:
+      event-target-shim: 5.0.1
 
   accepts@2.0.0:
     dependencies:
@@ -10312,8 +10459,9 @@ snapshots:
       esbuild: 0.25.12
       tsx: 4.23.13
 
-  drizzle-orm@0.44.7(@neondatabase/serverless@1.1.0):
+  drizzle-orm@0.44.7(@electric-sql/pglite@0.5.8)(@neondatabase/serverless@1.1.0):
     optionalDependencies:
+      '@electric-sql/pglite': 0.5.8
       '@neondatabase/serverless': 1.1.0
 
   dunder-proto@1.0.1:
@@ -10537,6 +10685,8 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
+  event-target-shim@5.0.1: {}
+
   eventemitter2@6.4.9: {}
 
   eventemitter3@5.0.1: {}
@@ -10673,6 +10823,16 @@ snapshots:
   gopd@1.2.0: {}
 
   graceful-fs@4.2.11: {}
+
+  grammy@1.46.0(supports-color@8.1.1):
+    dependencies:
+      '@grammyjs/types': 5.0.0
+      abort-controller: 3.0.0
+      debug: 4.4.3(supports-color@8.1.1)
+      node-fetch: 2.7.0
+    transitivePeerDependencies:
+      - encoding
+      - supports-color
 
   graphql-request@7.4.0(graphql@16.14.2):
     dependencies:
@@ -11334,7 +11494,7 @@ snapshots:
       '@noble/hashes': 1.8.0
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
-      abitype: 1.2.3(typescript@5.9.3)(zod@3.22.4)
+      abitype: 1.3.0(typescript@5.9.3)(zod@3.22.4)
       eventemitter3: 5.0.1
     optionalDependencies:
       typescript: 5.9.3
@@ -11349,7 +11509,7 @@ snapshots:
       '@noble/hashes': 1.8.0
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
-      abitype: 1.2.3(typescript@5.9.3)(zod@3.25.76)
+      abitype: 1.3.0(typescript@5.9.3)(zod@3.25.76)
       eventemitter3: 5.0.1
     optionalDependencies:
       typescript: 5.9.3
@@ -11364,7 +11524,7 @@ snapshots:
       '@noble/hashes': 1.8.0
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
-      abitype: 1.2.3(typescript@5.9.3)(zod@4.5.4)
+      abitype: 1.3.0(typescript@5.9.3)(zod@4.5.4)
       eventemitter3: 5.0.1
     optionalDependencies:
       typescript: 5.9.3
@@ -11377,8 +11537,8 @@ snapshots:
       '@noble/curves': 1.9.7
       '@noble/hashes': 1.8.0
       '@scure/bip32': 1.7.0
-      '@scure/bip39': 1.5.4
-      abitype: 1.0.8(typescript@5.9.3)(zod@4.5.4)
+      '@scure/bip39': 1.6.0
+      abitype: 1.3.0(typescript@5.9.3)(zod@4.5.4)
       eventemitter3: 5.0.1
     optionalDependencies:
       typescript: 5.9.3

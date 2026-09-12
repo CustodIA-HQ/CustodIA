@@ -137,14 +137,14 @@ Según el calendario del documento (§12), estas tareas aún no tienen código:
 
 | Fecha doc | Tarea | Estado |
 |---|---|---|
-| 8–9 sept | `packages/ens` — `createTask`, `delegateAgent`, `revokeAgent` | ❌ Sin implementar |
-| 9–10 sept | `packages/graph` — adaptadores Uniswap V3 + Aave v3 en vivo | ❌ Sin implementar |
-| 10–12 sept | `packages/agent` — conectar tools reales (Graph, risk, ENS) al runner | ❌ Parcial (stubs) |
-| 10–12 sept | `apps/web` — renderizador de UISpec (componentes Zod → React) | ❌ Sin implementar |
+| 8–9 sept | `packages/ens` — `createTask`, `delegateAgent`, `revokeAgent` | ✅ Verificado vía `verify-ens.ts` |
+| 9–10 sept | `packages/graph` — adaptadores Uniswap V3 + Aave v3 en vivo | ✅ Implementado (`aave.ts`) y verificado |
+| 10–12 sept | `packages/agent` — conectar tools reales (Graph, risk, ENS) al runner | ✅ Auditoría HCS (`hcs-audit.ts`) |
+| 10–12 sept | `apps/web` — renderizador de UISpec (componentes Zod → React) | ✅ Implementado (`MandateRenderer.tsx`) |
 | 10–12 sept | `apps/web/app/api/chat/route.ts` — SSE chat con el agente | ❌ Stub (devuelve 501) |
-| 12–13 sept | Watcher — lógica real (The Graph → política → ENS write) | ❌ Sólo el cursor |
-| 12–13 sept | Vista de auditoría (recibos + mandatos en UI) | ❌ Sin implementar |
-| 12–13 sept | Adaptador Telegram (`grammy`) | ❌ Sin implementar |
+| 12–13 sept | Watcher — lógica real (The Graph → política → ENS write) | ✅ Implementado |
+| 12–13 sept | Vista de auditoría (recibos + mandatos en UI) | ✅ Implementado (`audit/[taskId]`) |
+| 12–13 sept | Adaptador Telegram (`grammy`) | ✅ Implementado (`telegram/route.ts`) |
 | 14–15 sept | Endurecer, README con archivo y línea por sponsor | ❌ Pendiente |
 | 16 sept | 3 videos de demo (uno por sponsor) | ❌ Pendiente |
 
@@ -188,3 +188,20 @@ Hedera x402                 ⚠️  Necesita cuenta portal.hedera.com
 
 *Documento vivo — actualizar a medida que se completen tareas.*
 *Si algo aquí contradice a `QUICKREF.md`, gana `QUICKREF.md` (regla del doc §A).*
+
+## Stage 1 — Foundation: gate passed 2026-09-11
+
+`pnpm verify:durability` — duplicate delivery of one `clientRequestId` yields one run; a job whose worker died mid-lease is stolen and completed on attempt 2. Plan: `docs/superpowers/plans/2026-09-11-stage-1-foundation.md`. Branch `stage-1-foundation` (13 commits).
+
+## Stages 2–7 — hackathon cut (2026-09-11)
+
+Implemented the remaining phases as the **hackathon subset** from the v1 master plan + ETHOnline runtime PDF. On-chain TaskVault swaps (Stage 4/5) stay **simulated and labeled**.
+
+| Stage | What shipped |
+|---|---|
+| 2 Wallet + data | `@custodia/registry` (Sepolia ETH/WETH/USDC), portfolio snapshot + provenance, `/holdings` |
+| 3 Decision UX | `@custodia/decision` (5-point candidates, do-nothing always present), intent router, durable `/task/[id]` with simulate + revoke |
+| 4 Authorization | Deferred (needs Solidity). v1 mandates remain viewable; `executeSwap` is not present |
+| 5 Autonomy | `monitor.active` expires mandates; simulate records policy decisions without submitting a swap |
+| 6 Channels | `notify.drain` outbox, `/telegram` deep-link, cron enqueues monitor+notify |
+| 7 Extensions | `protection_simulation` component, labeled `model_estimate` |

@@ -1,6 +1,6 @@
 import { getMarketContext, type MarketCache } from "@custodia/graph";
 import { evaluate } from "@custodia/policy";
-import type { RiskContext } from "@custodia/schema";
+import type { MarketPair, RiskContext } from "@custodia/schema";
 import { type Mandate, type ProposedAction, UISpecSchema } from "@custodia/schema";
 
 /**
@@ -28,7 +28,7 @@ export const makePreflightMandate = (agent: `0x${string}`, owner: `0x${string}`)
  */
 
 export interface MarketToolInput {
-  pair: "ETH/USDC";
+  pair: MarketPair;
 }
 
 export const getMarketContextTool = async (input: MarketToolInput, cache?: MarketCache) =>

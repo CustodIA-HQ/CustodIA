@@ -1,6 +1,7 @@
 import "../../env";
 
 import { createHmac, timingSafeEqual } from "node:crypto";
+import type { ChallengeStore } from "@custodia/db";
 import { NotImplementedError } from "@custodia/schema";
 import { verifyMessage } from "viem";
 import { normalizeAddress, type WebAddress } from "../identity";
@@ -151,6 +152,8 @@ export const verifyChallenge = async (params: {
   conversationId: string;
   message: string;
   signature: string;
+  /** When given, the challenge nonce is consumed so a signed challenge is single-use. */
+  store?: ChallengeStore;
 }): Promise<{ session: ConversationSession; token: string }> => {
   const address = normalizeAddress(params.address);
 
@@ -195,6 +198,15 @@ export const verifyChallenge = async (params: {
     signature: params.signature as `0x${string}`,
   });
   if (!valid) throw new AuthError("The wallet signature could not be verified.");
+
+  const nonce = fieldFrom(params.message, "Nonce");
+  if (params.store && nonce) {
+    const first = await params.store.consume(nonce, {
+      conversationId: params.conversationId,
+      address,
+    });
+    if (!first) throw new AuthError("This challenge has already been used — request a new one.");
+  }
 
   const now = Date.now();
   const session: ConversationSession = {
