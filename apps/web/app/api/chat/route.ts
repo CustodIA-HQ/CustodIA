@@ -14,7 +14,9 @@ const MAX_HISTORY_LENGTH = 24;
 const ChatMessageSchema = z
   .object({
     role: z.enum(["user", "assistant"]),
-    content: z.string().trim().min(1).max(MAX_MESSAGE_LENGTH),
+    // Empty strings are UI cards (snapshot / options / market). Drop them
+    // after parse — rejecting the whole request breaks the next user turn.
+    content: z.string().max(MAX_MESSAGE_LENGTH),
   })
   .strict();
 
@@ -94,7 +96,9 @@ export async function POST(request: Request) {
       );
     }
     const owner = session.address;
-    const suppliedMessages = parsed.data.messages ?? [];
+    const suppliedMessages = (parsed.data.messages ?? [])
+      .map((entry) => ({ role: entry.role, content: entry.content.trim() }))
+      .filter((entry) => entry.content.length > 0);
     const lastMessage = suppliedMessages.at(-1);
     const withPrompt =
       lastMessage?.role === "user" && lastMessage.content === parsed.data.message

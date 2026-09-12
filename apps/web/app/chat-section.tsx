@@ -650,10 +650,12 @@ export default function ChatSection({ fullPage = false }: { fullPage?: boolean }
           // Idempotency key: a retry of this exact message reuses the same run.
           clientRequestId: crypto.randomUUID(),
           message: content,
-          messages: [...messages, userMessage].map(({ role, content: text }) => ({
-            role,
-            content: text,
-          })),
+          messages: [...messages, userMessage]
+            .filter((entry) => entry.content.trim().length > 0)
+            .map(({ role, content: text }) => ({
+              role,
+              content: text,
+            })),
         }),
       });
       const payload = (await response.json().catch(() => ({}))) as ChatResponse;

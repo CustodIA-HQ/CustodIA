@@ -84,6 +84,41 @@ it("persists the request as a run and returns 202 with the run id", async () => 
   expect(mocks.runAgent).not.toHaveBeenCalled();
 });
 
+it("drops empty history cards instead of rejecting the request", async () => {
+  const res = await POST(
+    new Request("http://x/api/chat", {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie: sessionCookie() },
+      body: JSON.stringify({
+        conversationId,
+        clientRequestId: "22222222-2222-4222-8222-222222222222",
+        message: "What is ETH doing today?",
+        messages: [
+          { role: "assistant", content: "Sign this conversation." },
+          { role: "user", content: "Show my Sepolia portfolio" },
+          { role: "assistant", content: "" },
+          { role: "user", content: "What is ETH doing today?" },
+          { role: "assistant", content: "" },
+        ],
+      }),
+    }),
+  );
+  expect(res.status).toBe(202);
+  expect(mocks.createRun).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({
+      input: {
+        messages: [
+          { role: "assistant", content: "Sign this conversation." },
+          { role: "user", content: "Show my Sepolia portfolio" },
+          { role: "user", content: "What is ETH doing today?" },
+        ],
+        agent,
+      },
+    }),
+  );
+});
+
 it("does not enqueue twice for a duplicate delivery", async () => {
   mocks.createRun.mockResolvedValueOnce({ runId: "run-1", created: false });
   const res = await POST(
