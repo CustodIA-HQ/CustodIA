@@ -7,12 +7,7 @@ import { SiteHeader } from "../components/site-header";
 
 export default function ChatPage() {
   const [showWelcome, setShowWelcome] = useState(true);
-  const [videoSrc, setVideoSrc] = useState<string | null>(null);
-
-  useEffect(() => {
-    const isSpanish = navigator.language.toLowerCase().startsWith("es");
-    setVideoSrc(isSpanish ? "/splash-video-es.mp4" : "/splash-video-en.mp4");
-  }, []);
+  const videoSrc = "/splash-video-en.mp4"; // Forzado a inglés según lo solicitado
 
   if (showWelcome) {
     return (
