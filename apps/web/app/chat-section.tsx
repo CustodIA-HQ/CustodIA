@@ -12,7 +12,6 @@ import {
 } from "@custodia/schema";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { getAddress } from "viem";
-import { AnimatedAILogo } from "./components/AnimatedAILogo";
 import { BalanceCard, type WalletSnapshot } from "./components/balance-card";
 import { EnsClaimForm } from "./components/ens-claim-form";
 import { GeneratedUx } from "./components/generated-ux";
@@ -834,19 +833,12 @@ export default function ChatSection({ fullPage = false }: { fullPage?: boolean }
                 className="chat-message chat-message--assistant chat-progress"
                 aria-live="polite"
               >
-                <div className="flex items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-950/50 px-4 py-3">
-                  <AnimatedAILogo size={26} />
-                  <span className="font-mono text-sm text-zinc-400">
-                    {isLoading
-                      ? "Queuing your request…"
-                      : run.stageLabel}
-                    {!isLoading && run.events.length > 0 && (
-                      <span className="ml-2 text-xs text-zinc-600">
-                        · {run.events.length} events
-                      </span>
-                    )}
-                  </span>
-                </div>
+                <p>
+                  <strong>{isLoading ? "Queuing your request…" : run.stageLabel}</strong>
+                  {!isLoading && run.events.length > 0 && (
+                    <small> · {run.events.length} events</small>
+                  )}
+                </p>
               </article>
             )}
 
