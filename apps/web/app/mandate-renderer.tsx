@@ -25,7 +25,7 @@ import {
   type UISpec,
   UISpecSchema,
 } from "@custodia/schema";
-import { useCallback, useReducer, useState } from "react";
+import { useCallback, useMemo, useReducer, useState } from "react";
 import { keccak256, toHex } from "viem";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -126,24 +126,30 @@ const buildConstraints = (state: FormState): Constraint[] => [
  */
 const validateSpec = (raw: unknown): UISpec => UISpecSchema.parse(raw);
 
+/** Placeholder so hooks can initialise even when the incoming spec is invalid. */
+const EMPTY_SPEC: UISpec = { intent: "configure_portfolio_guard", components: [], rationale: "" };
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function FieldLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <label
-      style={{
-        display: "block",
-        fontSize: 11,
-        fontWeight: 700,
-        letterSpacing: "0.1em",
-        textTransform: "uppercase",
-        color: "rgba(226,240,255,0.45)",
-        marginBottom: "0.4rem",
-      }}
-    >
-      {children}
-    </label>
-  );
+/** A field caption. Pass `htmlFor` to bind it to a control; without one it is a plain caption, not a <label>. */
+function FieldLabel({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) {
+  const captionStyle: React.CSSProperties = {
+    display: "block",
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: "0.1em",
+    textTransform: "uppercase",
+    color: "rgba(226,240,255,0.45)",
+    marginBottom: "0.4rem",
+  };
+  if (htmlFor) {
+    return (
+      <label htmlFor={htmlFor} style={captionStyle}>
+        {children}
+      </label>
+    );
+  }
+  return <span style={captionStyle}>{children}</span>;
 }
 
 function ValueBadge({ children }: { children: React.ReactNode }) {
@@ -199,45 +205,27 @@ export default function MandateRenderer({
   onSigned,
   onRevoke,
 }: MandateRendererProps) {
-  // ── 1. Validate the spec — hard error surfaces in the UI, not a console.warn ──
-  let spec: UISpec;
-  try {
-    spec = validateSpec(rawSpec);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return (
-      <div
-        role="alert"
-        style={{
-          background: "rgba(255,60,60,0.08)",
-          border: "1px solid rgba(255,60,60,0.35)",
-          borderRadius: 10,
-          padding: "1rem 1.25rem",
-          color: "#ff6b6b",
-          fontSize: 13,
-          fontFamily: "monospace",
-        }}
-      >
-        <strong>UISpec validation failed — proposal rejected.</strong>
-        <pre style={{ marginTop: "0.5rem", whiteSpace: "pre-wrap", opacity: 0.8 }}>{msg}</pre>
-      </div>
-    );
-  }
+  // ── 1. Validate the spec ─────────────────────────────────────────────────────
+  // Hooks must run unconditionally, so validation is memoised and the error UI
+  // is rendered *after* every hook has been called.
+  const parsed = useMemo(() => {
+    try {
+      return { spec: validateSpec(rawSpec), error: null as string | null };
+    } catch (err) {
+      return { spec: null, error: err instanceof Error ? err.message : String(err) };
+    }
+  }, [rawSpec]);
+  const spec: UISpec = parsed.spec ?? EMPTY_SPEC;
 
   // ── 2. Local state ───────────────────────────────────────────────────────────
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const [form, dispatch] = useReducer(formReducer, spec, initFormState);
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const [status, setStatus] = useState<
     "idle" | "requesting_account" | "signing" | "signed" | "error"
   >("idle");
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const [result, setResult] = useState<SignatureResult | null>(null);
 
   // ── 3. Approve handler ───────────────────────────────────────────────────────
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const handleApprove = useCallback(async () => {
     setErrorMsg(null);
 
@@ -311,6 +299,28 @@ export default function MandateRenderer({
   const isDisabled = status === "requesting_account" || status === "signing" || status === "signed";
 
   // ── 5. Render ────────────────────────────────────────────────────────────────
+  if (parsed.error !== null) {
+    return (
+      <div
+        role="alert"
+        style={{
+          background: "rgba(255,60,60,0.08)",
+          border: "1px solid rgba(255,60,60,0.35)",
+          borderRadius: 10,
+          padding: "1rem 1.25rem",
+          color: "#ff6b6b",
+          fontSize: 13,
+          fontFamily: "monospace",
+        }}
+      >
+        <strong>UISpec validation failed — proposal rejected.</strong>
+        <pre style={{ marginTop: "0.5rem", whiteSpace: "pre-wrap", opacity: 0.8 }}>
+          {parsed.error}
+        </pre>
+      </div>
+    );
+  }
+
   return (
     <section
       aria-labelledby="mandate-renderer-title"
