@@ -1,5 +1,4 @@
 import { PRODUCT_CASES } from "./cases";
-import { OpenChatButton } from "./components/OpenChatButton";
 import { GeneratedUx } from "./components/generated-ux";
 import { SiteFooter, SiteHeader } from "./components/site-header";
 import { demoMarket, demoSpec } from "./ux/samples";
@@ -26,7 +25,9 @@ export default function Home() {
             ETH/USDC from The Graph; paid risk context on Hedera.
           </p>
           <div className="home-hero__actions">
-            <OpenChatButton href="/chat" />
+            <a className="btn-primary" href="/chat" target="_blank" rel="noopener noreferrer">
+              Open chat
+            </a>
             <a className="btn-ghost" href="/ux">
               See generated UX
             </a>
