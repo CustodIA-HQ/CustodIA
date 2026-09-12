@@ -4,5 +4,7 @@ export default defineConfig({
   test: {
     include: ["src/**/*.test.ts"],
     testTimeout: 30_000,
+    // PGlite boots per file; six suites in parallel exceed the 10 s default.
+    hookTimeout: 60_000,
   },
 });
