@@ -11,16 +11,20 @@ export default function ChatPage() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowWelcome(false);
-    }, 2000);
+    }, 2500);
     return () => clearTimeout(timer);
   }, []);
 
   if (showWelcome) {
     return (
-      <div className="flex min-h-screen w-full flex-col items-center justify-center bg-zinc-950">
-        <AnimatedAILogo size={80} />
-        <h1 className="mt-6 text-xl font-mono text-zinc-200">Welcome to CustodIA</h1>
-        <p className="mt-2 text-sm font-mono text-zinc-500">Initializing secure environment...</p>
+      <div className="flex h-screen w-full flex-col items-center justify-center bg-zinc-950">
+        <AnimatedAILogo/>
+        <h1 className="mt-8 text-2xl font-mono text-zinc-100 tracking-wide">
+          CustodIA
+        </h1>
+        <p className="mt-3 text-sm font-mono text-zinc-500 animate-pulse">
+          Initializing secure environment...
+        </p>
       </div>
     );
   }
