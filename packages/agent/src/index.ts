@@ -290,19 +290,18 @@ export async function runAgent(options: RunAgentOptions): Promise<RunAgentResult
   return { market, uiSpec, receipts, rationale };
 }
 
-export { composeNeedsHuman, composeUISpec } from "./compose.js";
-export { classifyIntent } from "./router.js";
-export { type PaidFetchResult, PaymentError, paidFetch } from "./x402.js";
-export { hcsAuditHandler, submitAuditLog } from "./hcs-audit.js";
 export {
-  intentAgent,
-  marketAgent,
-  uiSpecAgent,
   checkPolicy,
   type IntentResult,
+  intentAgent,
   type MarketAgentInput,
   type MarketAgentResult,
+  marketAgent,
   type UISpecAgentInput,
   type UISpecAgentResult,
+  uiSpecAgent,
 } from "./agents.js";
-
+export { composeNeedsHuman, composeUISpec } from "./compose.js";
+export { hcsAuditHandler, submitAuditLog } from "./hcs-audit.js";
+export { classifyIntent } from "./router.js";
+export { type PaidFetchResult, PaymentError, paidFetch } from "./x402.js";

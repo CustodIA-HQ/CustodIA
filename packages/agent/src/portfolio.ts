@@ -1,6 +1,6 @@
+import { coverageFor, NATIVE_ETH, SEPOLIA_USDC } from "@custodia/registry";
 import type { PortfolioSnapshot } from "@custodia/schema";
 import { SEPOLIA_CHAIN_ID } from "@custodia/schema";
-import { NATIVE_ETH, SEPOLIA_USDC, coverageFor } from "@custodia/registry";
 import { createPublicClient, erc20Abi, formatEther, formatUnits, http } from "viem";
 import { sepolia } from "viem/chains";
 

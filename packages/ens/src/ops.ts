@@ -111,10 +111,7 @@ export async function createOwnerName(
 }
 
 /** Who owns `{label}.{parent}` on-chain, if anyone. */
-export async function lookupOwnerRecord(
-  config: EnsConfig,
-  name: string,
-): Promise<string | null> {
+export async function lookupOwnerRecord(config: EnsConfig, name: string): Promise<string | null> {
   const value = await publicClient(config)
     .getEnsText({ name, key: "xyz.custodia.owner" })
     .catch(() => null);

@@ -1,5 +1,5 @@
-import type { Mandate } from "@custodia/schema";
 import { tables } from "@custodia/db";
+import type { Mandate } from "@custodia/schema";
 import { eq } from "drizzle-orm";
 import type { JobHandler } from "../registry.js";
 import { loadLatestMandate, transitionTask } from "../tasks.js";

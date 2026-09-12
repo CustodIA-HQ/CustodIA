@@ -1,9 +1,11 @@
 import { expect, it } from "vitest";
-import { evaluateAllocations, enumerateCandidates, filterFeasible } from "../src/index.js";
+import { enumerateCandidates, evaluateAllocations, filterFeasible } from "../src/index.js";
 
 it("always includes the unchanged allocation as a candidate", () => {
   const candidates = enumerateCandidates({ ethUsd: 50, usdcUsd: 50 });
-  expect(candidates.some((c) => c.ethPct === 50 && c.usdcPct === 50 && c.distance === 0)).toBe(true);
+  expect(candidates.some((c) => c.ethPct === 50 && c.usdcPct === 50 && c.distance === 0)).toBe(
+    true,
+  );
   expect(candidates.length).toBeGreaterThan(10);
 });
 

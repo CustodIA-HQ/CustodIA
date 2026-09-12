@@ -41,7 +41,8 @@ export function parseClaimLabel(
   if (label.length < 3 || label.length > 63 || !LABEL_RE.test(label)) {
     return {
       ok: false,
-      error: "Use 3–63 characters: lowercase letters, numbers, and hyphens (no leading/trailing hyphen).",
+      error:
+        "Use 3–63 characters: lowercase letters, numbers, and hyphens (no leading/trailing hyphen).",
     };
   }
   if (RESERVED_LABELS.has(label) || label.startsWith("wallet-")) {
@@ -91,10 +92,8 @@ export async function getUserLabel(owner: OwnerAddress): Promise<string> {
   }
 }
 
-export const makeOwnerName = (
-  userLabel: string,
-  parentName = getParentName(),
-): string => `${userLabel}.${parentName}`;
+export const makeOwnerName = (userLabel: string, parentName = getParentName()): string =>
+  `${userLabel}.${parentName}`;
 
 export const makeTaskName = (
   taskId: string,

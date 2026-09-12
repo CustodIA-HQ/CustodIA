@@ -2,10 +2,7 @@ import { tables } from "@custodia/db";
 import { and, eq, ne, sql } from "drizzle-orm";
 import type { AnyDb } from "./runs.js";
 
-export async function getStoredUserLabel(
-  db: AnyDb,
-  wallet: `0x${string}`,
-): Promise<string | null> {
+export async function getStoredUserLabel(db: AnyDb, wallet: `0x${string}`): Promise<string | null> {
   const key = wallet.toLowerCase();
   const [existing] = await db
     .select({ ensLabel: tables.users.ensLabel })
@@ -19,10 +16,7 @@ export async function getStoredUserLabel(
  * Returns the frozen ENS label. Does not invent a wallet-* name — the owner
  * must claim a label first so tasks nest under the same minted identity.
  */
-export async function getOrCreateUserLabel(
-  db: AnyDb,
-  wallet: `0x${string}`,
-): Promise<string> {
+export async function getOrCreateUserLabel(db: AnyDb, wallet: `0x${string}`): Promise<string> {
   const stored = await getStoredUserLabel(db, wallet);
   if (stored) return stored;
   throw new Error("ENS name not claimed. Pick and mint a name under the parent first.");
@@ -37,7 +31,12 @@ export async function isLabelTaken(
     ? await db
         .select({ wallet: tables.users.wallet })
         .from(tables.users)
-        .where(and(eq(tables.users.ensLabel, label), ne(tables.users.wallet, exceptWallet.toLowerCase())))
+        .where(
+          and(
+            eq(tables.users.ensLabel, label),
+            ne(tables.users.wallet, exceptWallet.toLowerCase()),
+          ),
+        )
         .limit(1)
     : await db
         .select({ wallet: tables.users.wallet })
@@ -56,7 +55,9 @@ export async function claimUserLabel(
   const key = wallet.toLowerCase();
   const stored = await getStoredUserLabel(db, wallet);
   if (stored && stored !== label) {
-    throw new Error(`This wallet already claimed ${stored}. Task subnames stay under that identity.`);
+    throw new Error(
+      `This wallet already claimed ${stored}. Task subnames stay under that identity.`,
+    );
   }
   if (stored === label) return { label, created: false };
   if (await isLabelTaken(db, label, wallet)) {

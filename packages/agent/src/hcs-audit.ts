@@ -22,18 +22,16 @@ export async function submitAuditLog(taskId: string, payload: unknown) {
   if (!topicId) throw new Error("Missing HEDERA_TOPIC_ID");
 
   const message = JSON.stringify({ taskId, timestamp: new Date().toISOString(), payload });
-  
-  const tx = new TopicMessageSubmitTransaction()
-    .setTopicId(topicId)
-    .setMessage(message);
-    
+
+  const tx = new TopicMessageSubmitTransaction().setTopicId(topicId).setMessage(message);
+
   const resp = await tx.execute(getClient());
   const receipt = await resp.getReceipt(getClient());
-  
+
   return {
     status: receipt.status.toString(),
     sequenceNumber: receipt.topicSequenceNumber?.toString(),
-    txId: resp.transactionId.toString()
+    txId: resp.transactionId.toString(),
   };
 }
 
@@ -41,9 +39,15 @@ export async function submitAuditLog(taskId: string, payload: unknown) {
  * Job Handler wrapper for the new runtime.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const hcsAuditHandler = async ({ job, heartbeat }: { job: any; heartbeat: () => Promise<void> }) => {
+export const hcsAuditHandler = async ({
+  job,
+  heartbeat,
+}: {
+  job: { payload: unknown };
+  heartbeat: () => Promise<void>;
+}) => {
   await heartbeat();
-  const { taskId, payload } = job.payload;
+  const { taskId, payload } = job.payload as { taskId: string; payload: unknown };
   if (!taskId) throw new Error("Missing taskId in payload");
   await submitAuditLog(taskId, payload);
 };

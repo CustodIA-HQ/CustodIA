@@ -13,7 +13,6 @@
  */
 
 import { getMarketContext } from "@custodia/graph";
-import { evaluate } from "@custodia/policy";
 import {
   type Intent,
   type MarketContext,
@@ -21,8 +20,8 @@ import {
   type RiskContext,
   UISpecSchema,
 } from "@custodia/schema";
-import { classifyIntent } from "./router.js";
 import { clipUISpec } from "./clipper.js";
+import { classifyIntent } from "./router.js";
 
 // ─── IntentAgent ──────────────────────────────────────────────────────────────
 
@@ -83,9 +82,7 @@ export async function marketAgent(input: MarketAgentInput): Promise<MarketAgentR
 
   const aaveTask: Promise<MarketAgentResult["aave"]> =
     protocols.includes("aave") && ownerWallet
-      ? import("./aave-helper.js")
-          .then((m) => m.getAaveData(ownerWallet))
-          .catch(() => null)
+      ? import("./aave-helper.js").then((m) => m.getAaveData(ownerWallet)).catch(() => null)
       : Promise.resolve(null);
 
   const [market, aave] = await Promise.all([uniswapTask, aaveTask]);
@@ -96,8 +93,7 @@ export async function marketAgent(input: MarketAgentInput): Promise<MarketAgentR
 
 export interface UISpecAgentInput {
   /** Raw component array from the LLM (pre-validation). */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  components: any[];
+  components: unknown[];
   rationale: string;
   intent: Intent;
   risk: RiskContext | null;
@@ -114,15 +110,15 @@ export type UISpecAgentResult =
  * Zod-valid by construction. Returns a tagged union — never throws.
  */
 export function uiSpecAgent(input: UISpecAgentInput): UISpecAgentResult {
-  const withSummary = input.risk && input.receiptTxId
-    ? [
-        ...input.components.filter(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (c: any) => c?.type !== "risk_summary",
-        ),
-        { type: "risk_summary", risk: input.risk, receiptTxId: input.receiptTxId },
-      ]
-    : input.components;
+  const withSummary =
+    input.risk && input.receiptTxId
+      ? [
+          ...input.components.filter(
+            (c: unknown) => (c as { type?: string } | null)?.type !== "risk_summary",
+          ),
+          { type: "risk_summary", risk: input.risk, receiptTxId: input.receiptTxId },
+        ]
+      : input.components;
 
   const candidate = {
     intent: "configure_portfolio_guard" as const,

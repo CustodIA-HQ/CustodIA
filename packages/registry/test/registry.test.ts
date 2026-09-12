@@ -1,5 +1,11 @@
 import { expect, it } from "vitest";
-import { coverageFor, getCapability, listCapabilities, NATIVE_ETH, SEPOLIA_USDC } from "../src/index.js";
+import {
+  coverageFor,
+  getCapability,
+  listCapabilities,
+  NATIVE_ETH,
+  SEPOLIA_USDC,
+} from "../src/index.js";
 
 it("seeds Sepolia ETH, WETH and Circle USDC", () => {
   const caps = listCapabilities();

@@ -1,11 +1,10 @@
 import type { Mandate, MarketContext } from "@custodia/schema";
-import { MANDATE_DOMAIN, MANDATE_TYPES, constraintsHash } from "@custodia/schema";
-import { describe, expect, it } from "vitest";
+import { constraintsHash, MANDATE_DOMAIN, MANDATE_TYPES } from "@custodia/schema";
 import { privateKeyToAccount } from "viem/accounts";
+import { describe, expect, it } from "vitest";
 import {
   evaluate,
   evaluatePolicyLimits,
-  type MarketSnapshot,
   POLICY_MARKET_STALENESS_SECONDS,
   POLICY_MAX_DRAWDOWN_FLOOR_PCT,
   POLICY_MAX_TRADE_USD_CEILING,
@@ -92,8 +91,7 @@ describe("Policy Engine — evaluate()", () => {
 // ─── Suite 2: validateMandateSignature ───────────────────────────────────────
 
 describe("validateMandateSignature", () => {
-  const PRIVATE_KEY =
-    "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+  const PRIVATE_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
   const account = privateKeyToAccount(PRIVATE_KEY);
 
   const mandateToSign: Mandate = {
@@ -193,9 +191,7 @@ describe("evaluatePolicyLimits", () => {
   it("denies trade size above the absolute ceiling", () => {
     const mandate: Mandate = {
       ...dummyMandate,
-      constraints: [
-        { type: "custodia.max_trade_usd.1", value: POLICY_MAX_TRADE_USD_CEILING + 1 },
-      ],
+      constraints: [{ type: "custodia.max_trade_usd.1", value: POLICY_MAX_TRADE_USD_CEILING + 1 }],
     };
     const decision = evaluatePolicyLimits(mandate, { market: freshMarket, now: NOW });
     expect(decision.allowed).toBe(false);

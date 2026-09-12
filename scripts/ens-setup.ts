@@ -268,7 +268,7 @@ if (!existingResolver) {
   const env = readFileSync(".env", "utf8");
   if (!/^ENS_RESOLVER_ADDRESS=\s*$/m.test(env))
     throw new Error(
-      "ENS_RESOLVER_ADDRESS is not an empty line in .env — write it manually: " + resolver,
+      `ENS_RESOLVER_ADDRESS is not an empty line in .env — write it manually: ${resolver}`,
     );
   writeFileSync(
     ".env",

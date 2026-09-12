@@ -38,7 +38,11 @@ export function clipUISpec(spec: UISpec, risk: RiskContext): UISpec {
         }
         case "protection_knobs": {
           const [lo, hi] = risk.drawdownRange;
-          const deductiblePct = clamp(component.deductiblePct, Math.max(1, lo), Math.max(hi, lo + 1));
+          const deductiblePct = clamp(
+            component.deductiblePct,
+            Math.max(1, lo),
+            Math.max(hi, lo + 1),
+          );
           const budgetUsd = Math.min(component.budgetUsd, Math.max(1, risk.maxTradeEnvelopeUsd));
           const strikeUsd = component.spotUsd * (1 - deductiblePct / 100);
           return { ...component, deductiblePct, budgetUsd, strikeUsd };

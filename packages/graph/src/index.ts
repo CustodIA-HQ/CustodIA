@@ -312,8 +312,8 @@ export async function confirmPoolId(): Promise<{
   };
 }
 
+export { aaveHandler, getAaveCollateral } from "./aave.js";
 export type { MarketCache } from "./cache.js";
 export { MARKET_CACHE_TTL_S } from "./cache.js";
 export { graphEndpoint } from "./config.js";
 export { MARKET_PAIR_LIST, VENUES, venueFor } from "./pools.js";
-export { aaveHandler, getAaveCollateral } from "./aave.js";

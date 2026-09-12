@@ -28,7 +28,8 @@ const SEED: Capability[] = [
     symbol: "WETH",
     decimals: 18,
     status: "observable",
-    exclusionReason: "Wrapped ETH is observed; execution wraps/unwraps via the native ETH capability.",
+    exclusionReason:
+      "Wrapped ETH is observed; execution wraps/unwraps via the native ETH capability.",
     version: 1,
   },
   {
@@ -47,7 +48,10 @@ const byContract = new Map(SEED.map((c) => [c.contract.toLowerCase(), c]));
 export const listCapabilities = (chainId = SEPOLIA_CHAIN_ID): Capability[] =>
   SEED.filter((c) => c.chainId === chainId);
 
-export const getCapability = (contract: string, chainId = SEPOLIA_CHAIN_ID): Capability | undefined => {
+export const getCapability = (
+  contract: string,
+  chainId = SEPOLIA_CHAIN_ID,
+): Capability | undefined => {
   const found = byContract.get(contract.toLowerCase());
   return found?.chainId === chainId ? found : undefined;
 };

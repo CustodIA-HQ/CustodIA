@@ -1,5 +1,11 @@
-import type { Constraint, Mandate, MarketContext, PolicyDecision, ProposedAction } from "@custodia/schema";
-import { MANDATE_DOMAIN, MANDATE_TYPES, constraintsHash } from "@custodia/schema";
+import type {
+  Constraint,
+  Mandate,
+  MarketContext,
+  PolicyDecision,
+  ProposedAction,
+} from "@custodia/schema";
+import { constraintsHash, MANDATE_DOMAIN, MANDATE_TYPES } from "@custodia/schema";
 import { verifyTypedData } from "viem";
 
 /**
@@ -215,10 +221,7 @@ export interface MarketSnapshot {
  *
  * Pure and synchronous. No I/O.
  */
-export function evaluatePolicyLimits(
-  mandate: Mandate,
-  snapshot: MarketSnapshot,
-): PolicyDecision {
+export function evaluatePolicyLimits(mandate: Mandate, snapshot: MarketSnapshot): PolicyDecision {
   const { market, now } = snapshot;
 
   // ── 1. Staleness guard ───────────────────────────────────────────────────

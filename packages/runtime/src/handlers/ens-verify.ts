@@ -9,8 +9,6 @@
  */
 
 import { loadEnsConfig } from "@custodia/ens";
-import { tables } from "@custodia/db";
-import { eq } from "drizzle-orm";
 import { createPublicClient, http, parseAbi } from "viem";
 import { sepolia } from "viem/chains";
 import type { JobHandler } from "../registry.js";
@@ -37,7 +35,7 @@ interface VerifySubdomainPayload {
   agentAddress: `0x${string}`;
 }
 
-export const ensVerifySubdomainHandler: JobHandler = async ({ db, job }) => {
+export const ensVerifySubdomainHandler: JobHandler = async ({ job }) => {
   const payload = job.payload as Partial<VerifySubdomainPayload>;
 
   if (!payload.ensName || !payload.agentAddress) {
