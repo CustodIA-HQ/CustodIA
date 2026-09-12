@@ -20,9 +20,11 @@ async function main() {
 
   const signer = createClientHederaSigner(
     operatorId,
-    PrivateKey.fromString(operatorKey),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    PrivateKey.fromString(operatorKey) as any,
     { network: "hedera:testnet" }
   );
+
 
   const coreClient = new x402Client().register("hedera:*", new ExactHederaScheme(signer));
   const client = new x402HTTPClient(coreClient);

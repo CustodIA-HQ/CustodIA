@@ -39,6 +39,10 @@ const NOW = 1500;
 
 const freshMarket: MarketContext = {
   pair: "ETH/USDC",
+  base: "ETH",
+  quote: "USDC",
+  poolId: "mock-pool-id",
+  poolName: "Mock Pool",
   priceUsd: 2400,
   realizedVol24hPct: 3.5,
   tvlUsd: 187_000_000,

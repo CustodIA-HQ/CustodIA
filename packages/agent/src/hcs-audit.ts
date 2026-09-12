@@ -36,3 +36,14 @@ export async function submitAuditLog(taskId: string, payload: unknown) {
     txId: resp.transactionId.toString()
   };
 }
+
+/**
+ * Job Handler wrapper for the new runtime.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const hcsAuditHandler = async ({ job, heartbeat }: { job: any; heartbeat: () => Promise<void> }) => {
+  await heartbeat();
+  const { taskId, payload } = job.payload;
+  if (!taskId) throw new Error("Missing taskId in payload");
+  await submitAuditLog(taskId, payload);
+};

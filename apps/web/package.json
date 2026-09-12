@@ -13,9 +13,12 @@
   "dependencies": {
     "@custodia/agent": "workspace:*",
     "@custodia/db": "workspace:*",
+    "@custodia/decision": "workspace:*",
     "@custodia/ens": "workspace:*",
     "@custodia/graph": "workspace:*",
     "@custodia/policy": "workspace:*",
+    "@custodia/registry": "workspace:*",
+    "@custodia/runtime": "workspace:*",
     "@custodia/schema": "workspace:*",
     "dotenv": "^17.0.0",
     "drizzle-orm": "^0.44.7",

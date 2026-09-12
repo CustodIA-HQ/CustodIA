@@ -188,3 +188,20 @@ Hedera x402                 ⚠️  Necesita cuenta portal.hedera.com
 
 *Documento vivo — actualizar a medida que se completen tareas.*
 *Si algo aquí contradice a `QUICKREF.md`, gana `QUICKREF.md` (regla del doc §A).*
+
+## Stage 1 — Foundation: gate passed 2026-09-11
+
+`pnpm verify:durability` — duplicate delivery of one `clientRequestId` yields one run; a job whose worker died mid-lease is stolen and completed on attempt 2. Plan: `docs/superpowers/plans/2026-09-11-stage-1-foundation.md`. Branch `stage-1-foundation` (13 commits).
+
+## Stages 2–7 — hackathon cut (2026-09-11)
+
+Implemented the remaining phases as the **hackathon subset** from the v1 master plan + ETHOnline runtime PDF. On-chain TaskVault swaps (Stage 4/5) stay **simulated and labeled**.
+
+| Stage | What shipped |
+|---|---|
+| 2 Wallet + data | `@custodia/registry` (Sepolia ETH/WETH/USDC), portfolio snapshot + provenance, `/holdings` |
+| 3 Decision UX | `@custodia/decision` (5-point candidates, do-nothing always present), intent router, durable `/task/[id]` with simulate + revoke |
+| 4 Authorization | Deferred (needs Solidity). v1 mandates remain viewable; `executeSwap` is not present |
+| 5 Autonomy | `monitor.active` expires mandates; simulate records policy decisions without submitting a swap |
+| 6 Channels | `notify.drain` outbox, `/telegram` deep-link, cron enqueues monitor+notify |
+| 7 Extensions | `protection_simulation` component, labeled `model_estimate` |

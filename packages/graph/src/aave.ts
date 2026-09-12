@@ -37,3 +37,14 @@ export async function getAaveCollateral(walletAddress: string) {
   
   return SubgraphUserCollateralSchema.parse(data);
 }
+
+/**
+ * Job Handler wrapper for the new runtime.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const aaveHandler = async ({ job, heartbeat }: { job: any; heartbeat: () => Promise<void> }) => {
+  await heartbeat();
+  const walletAddress = job.payload?.walletAddress;
+  if (!walletAddress) throw new Error("Missing walletAddress in payload");
+  await getAaveCollateral(walletAddress);
+};

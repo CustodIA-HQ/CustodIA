@@ -1,4 +1,10 @@
 import { afterEach, expect, it, vi } from "vitest";
+
+vi.mock("@custodia/db", () => ({ createDb: () => ({}) }));
+vi.mock("@custodia/runtime", () => ({
+  enqueueJob: vi.fn(async () => ({ jobId: 1, created: true })),
+}));
+
 import { GET } from "./route";
 
 afterEach(() => vi.unstubAllEnvs());
@@ -16,16 +22,13 @@ it("rejects an incorrect credential", async () => {
     ).status,
   ).toBe(401);
 });
-it("reports the watcher as unimplemented without database access", async () => {
+it("enqueues monitor and notify jobs when authorized", async () => {
   vi.stubEnv("CRON_SECRET", "test-secret");
-  vi.stubEnv("DATABASE_URL", "");
-  expect(
-    (
-      await GET(
-        new Request("https://example.com/api/cron", {
-          headers: { authorization: "Bearer test-secret" },
-        }),
-      )
-    ).status,
-  ).toBe(501);
+  const res = await GET(
+    new Request("https://example.com/api/cron", {
+      headers: { authorization: "Bearer test-secret" },
+    }),
+  );
+  expect(res.status).toBe(200);
+  expect(await res.json()).toMatchObject({ ok: true, simulated: true });
 });

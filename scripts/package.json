@@ -9,9 +9,11 @@
     "@custodia/ens": "workspace:*",
     "@custodia/graph": "workspace:*",
     "@custodia/policy": "workspace:*",
+    "@custodia/runtime": "workspace:*",
     "@custodia/schema": "workspace:*",
     "@hiero-ledger/sdk": "^2.87.0",
     "dotenv": "^17.0.0",
+    "drizzle-orm": "^0.44.7",
     "graphql-request": "^7.1.0",
     "viem": "catalog:"
   },

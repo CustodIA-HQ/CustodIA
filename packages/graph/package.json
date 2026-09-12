@@ -7,6 +7,10 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./pools": {
+      "types": "./src/pools.ts",
+      "default": "./src/pools.ts"
     }
   },
   "files": [

@@ -8,7 +8,7 @@ const conversationId = "00000000-0000-4000-8000-000000000002";
 
 afterEach(() => vi.unstubAllEnvs());
 
-it("verifies and consumes one wallet challenge for a conversation", async () => {
+it("verifies a wallet challenge and rejects tampered or foreign ones", async () => {
   vi.stubEnv("SESSION_SECRET", "test-session-secret");
   const challenge = createChallenge({
     address: account.address,
@@ -30,13 +30,46 @@ it("verifies and consumes one wallet challenge for a conversation", async () => 
     agent,
     conversationId,
   });
+  // Challenges are stateless (HMAC-derived), so a tampered message must fail
+  // even though it carries a valid-looking structure.
   await expect(
     verifyChallenge({
       address: account.address,
       agent,
       conversationId,
+      message: challenge.message.replace("Nonce: ", "Nonce: 0"),
+      signature,
+    }),
+  ).rejects.toThrow("does not match");
+
+  // …and a challenge issued for another conversation cannot be replayed here.
+  await expect(
+    verifyChallenge({
+      address: account.address,
+      agent,
+      conversationId: "00000000-0000-4000-8000-000000000003",
       message: challenge.message,
       signature,
     }),
-  ).rejects.toThrow("missing or expired");
+  ).rejects.toThrow("does not match");
+});
+
+it("rejects a replayed challenge when the store has consumed it", async () => {
+  vi.stubEnv("SESSION_SECRET", "test-session-secret");
+  const seen = new Set<string>();
+  const store = {
+    consume: async (nonce: string) => (seen.has(nonce) ? false : (seen.add(nonce), true)),
+  };
+  const challenge = createChallenge({ address: account.address, agent, conversationId });
+  const signature = await account.signMessage({ message: challenge.message });
+  const params = {
+    address: account.address,
+    agent,
+    conversationId,
+    message: challenge.message,
+    signature,
+    store,
+  };
+  await expect(verifyChallenge(params)).resolves.toBeTruthy();
+  await expect(verifyChallenge(params)).rejects.toThrow("already been used");
 });

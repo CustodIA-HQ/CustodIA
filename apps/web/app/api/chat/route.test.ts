@@ -6,9 +6,12 @@ const mocks = vi.hoisted(() => ({
     address: "0x1111111111111111111111111111111111111111",
   })),
   runAgent: vi.fn(),
+  createRun: vi.fn(async () => ({ runId: "run-1", created: true })),
+  enqueueJob: vi.fn(async () => ({ jobId: 1, created: true })),
 }));
 
 vi.mock("@custodia/agent", () => ({ runAgent: mocks.runAgent }));
+vi.mock("@custodia/runtime", () => ({ createRun: mocks.createRun, enqueueJob: mocks.enqueueJob }));
 vi.mock("@custodia/db", () => ({
   createDb: mocks.createDb,
   PostgresMarketCache: class {},
@@ -51,36 +54,52 @@ it("rejects malformed chat input before dispatching to the agent", async () => {
   expect(mocks.runAgent).not.toHaveBeenCalled();
 });
 
-it("dispatches a valid prompt and returns the agent result", async () => {
-  vi.stubEnv("AGENT_PRIVATE_KEY", `0x${"1".repeat(64)}`);
-  const cookie = sessionCookie();
-  mocks.runAgent.mockResolvedValue({
-    market: null,
-    uiSpec: null,
-    receipts: [],
-    rationale: "A bounded portfolio guard is ready to review.",
-  });
-
-  const response = await POST(
-    new Request("https://example.com/api/chat", {
+it("persists the request as a run and returns 202 with the run id", async () => {
+  const res = await POST(
+    new Request("http://x/api/chat", {
       method: "POST",
-      headers: { "content-type": "application/json", cookie },
-      body: JSON.stringify({ conversationId, message: "Keep $10k in ETH/USDC" }),
+      headers: { "content-type": "application/json", cookie: sessionCookie() },
+      body: JSON.stringify({
+        conversationId,
+        clientRequestId: "11111111-1111-4111-8111-111111111111",
+        message: "guard my eth",
+      }),
     }),
   );
-
-  expect(response.status).toBe(200);
-  expect(await response.json()).toMatchObject({
-    message: "A bounded portfolio guard is ready to review.",
-    receipts: [],
-  });
-  expect(mocks.runAgent).toHaveBeenCalledWith(
+  expect(res.status).toBe(202);
+  expect(await res.json()).toEqual({ runId: "run-1", created: true });
+  expect(mocks.createRun).toHaveBeenCalledWith(
+    expect.anything(),
     expect.objectContaining({
-      agent: "0x1111111111111111111111111111111111111111",
-      owner,
-      messages: [{ role: "user", content: "Keep $10k in ETH/USDC" }],
+      conversationId,
+      clientRequestId: "11111111-1111-4111-8111-111111111111",
+      ownerWallet: owner,
+      kind: "chat",
     }),
   );
+  expect(mocks.enqueueJob).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({ kind: "chat.run", dedupeKey: "chat.run:run-1" }),
+  );
+  expect(mocks.runAgent).not.toHaveBeenCalled();
+});
+
+it("does not enqueue twice for a duplicate delivery", async () => {
+  mocks.createRun.mockResolvedValueOnce({ runId: "run-1", created: false });
+  const res = await POST(
+    new Request("http://x/api/chat", {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie: sessionCookie() },
+      body: JSON.stringify({
+        conversationId,
+        clientRequestId: "11111111-1111-4111-8111-111111111111",
+        message: "guard my eth",
+      }),
+    }),
+  );
+  expect(res.status).toBe(202);
+  expect(await res.json()).toEqual({ runId: "run-1", created: false });
+  expect(mocks.enqueueJob).not.toHaveBeenCalled();
 });
 
 it("reports missing agent identity as a service configuration error", async () => {
@@ -91,7 +110,11 @@ it("reports missing agent identity as a service configuration error", async () =
     new Request("https://example.com/api/chat", {
       method: "POST",
       headers: { "content-type": "application/json", cookie },
-      body: JSON.stringify({ conversationId, message: "What can you protect?" }),
+      body: JSON.stringify({
+        conversationId,
+        clientRequestId: "11111111-1111-4111-8111-111111111111",
+        message: "What can you protect?",
+      }),
     }),
   );
 

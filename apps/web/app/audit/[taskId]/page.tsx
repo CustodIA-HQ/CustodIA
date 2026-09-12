@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 interface TimelineEvent {
   id: string;
   timestamp: Date;
-  type: "message" | "mandate" | "receipt";
+  type: "event" | "proposal" | "receipt";
   title: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data: any;
@@ -26,33 +26,32 @@ export default async function AuditPage({ params }: { params: Promise<{ taskId: 
 
   const db = createDb();
 
-  const [task] = await db.select().from(tables.tasks).where(eq(tables.tasks.id, taskId)).limit(1);
+  const [proposal] = await db.select().from(tables.proposals).where(eq(tables.proposals.taskId, taskId)).limit(1);
 
-  if (!task) {
+  if (!proposal) {
     notFound();
   }
 
-  const [dbMessages, dbMandates, dbReceipts] = await Promise.all([
-    db.select().from(tables.messages).where(eq(tables.messages.taskId, taskId)),
-    db.select().from(tables.mandates).where(eq(tables.mandates.taskId, taskId)),
+  const [dbEvents, dbReceipts] = await Promise.all([
+    db.select().from(tables.runEvents).where(eq(tables.runEvents.runId, proposal.runId)),
     db.select().from(tables.receipts).where(eq(tables.receipts.taskId, taskId)),
   ]);
 
   const timeline: TimelineEvent[] = [
-    ...dbMessages.map((m) => ({
-      id: `msg-${m.id}`,
-      timestamp: m.createdAt,
-      type: "message" as const,
-      title: m.role === "agent" ? "Agent Message" : "User Message",
-      data: m,
+    ...dbEvents.map((e) => ({
+      id: `evt-${e.id}`,
+      timestamp: e.createdAt,
+      type: "event" as const,
+      title: `Event: ${e.stage} [${e.type}]`,
+      data: e,
     })),
-    ...dbMandates.map((m) => ({
-      id: `mnd-${m.id}`,
-      timestamp: m.signedAt,
-      type: "mandate" as const,
-      title: `Mandate Signed (v${m.version})`,
-      data: m,
-    })),
+    {
+      id: `prop-${proposal.id}`,
+      timestamp: proposal.createdAt,
+      type: "proposal" as const,
+      title: `Proposal (v${proposal.version})`,
+      data: proposal,
+    },
     ...dbReceipts.map((r) => ({
       id: `rec-${r.id}`,
       timestamp: r.createdAt,
@@ -68,9 +67,9 @@ export default async function AuditPage({ params }: { params: Promise<{ taskId: 
         <header className="border-b border-zinc-800 pb-6">
           <h1 className="text-2xl font-semibold text-zinc-100">Audit Log: {taskId}</h1>
           <div className="mt-2 text-sm text-zinc-500 flex flex-col sm:flex-row sm:gap-6">
-            <span>ENS: <span className="text-zinc-300">{task.ensName}</span></span>
-            <span>Status: <span className="text-zinc-300">{task.status}</span></span>
-            <span>Created: {task.createdAt.toLocaleString()}</span>
+            <span>Owner: <span className="text-zinc-300">{proposal.ownerWallet}</span></span>
+            <span>Version: <span className="text-zinc-300">{proposal.version}</span></span>
+            <span>Created: {proposal.createdAt.toLocaleString()}</span>
           </div>
         </header>
 
@@ -88,29 +87,25 @@ export default async function AuditPage({ params }: { params: Promise<{ taskId: 
                 </div>
 
                 <div className="bg-zinc-900 border border-zinc-800 rounded-md p-4 text-sm overflow-x-auto">
-                  {event.type === "message" && (
+                  {event.type === "event" && (
                     <div>
-                      <div className="text-zinc-400 mb-2">Channel: {event.data.channel}</div>
+                      <div className="text-zinc-400 mb-2">Stage: {event.data.stage} | Type: {event.data.type}</div>
                       <pre className="text-xs text-zinc-300 whitespace-pre-wrap font-mono">
-                        {JSON.stringify(event.data.content, null, 2)}
+                        {JSON.stringify(event.data.payload, null, 2)}
                       </pre>
                     </div>
                   )}
 
-                  {event.type === "mandate" && (
+                  {event.type === "proposal" && (
                     <div className="space-y-2">
                       <div className="flex flex-col gap-1">
                         <span className="text-zinc-500 text-xs uppercase tracking-wider">Hash</span>
                         <span className="text-amber-500 font-semibold break-all">{event.data.hash}</span>
                       </div>
-                      <div className="flex flex-col gap-1">
-                        <span className="text-zinc-500 text-xs uppercase tracking-wider">Signature</span>
-                        <span className="text-zinc-400 break-all text-xs">{event.data.signature}</span>
-                      </div>
                       <details className="mt-2">
-                        <summary className="cursor-pointer text-xs text-zinc-500 hover:text-zinc-300">View Typed Data</summary>
+                        <summary className="cursor-pointer text-xs text-zinc-500 hover:text-zinc-300">View Proposal Body</summary>
                         <pre className="mt-2 text-xs text-zinc-400 whitespace-pre-wrap">
-                          {JSON.stringify(event.data.typedData, null, 2)}
+                          {JSON.stringify(event.data.body, null, 2)}
                         </pre>
                       </details>
                     </div>
