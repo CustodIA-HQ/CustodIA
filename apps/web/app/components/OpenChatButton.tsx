@@ -12,7 +12,11 @@ export function OpenChatButton({ href = "/chat" }: { href?: string }) {
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
     setIsInitializing(true);
-    router.push(href);
+    // Retardo artificial para que la transición minimalista se vea 
+    // antes de que el router navegue instantáneamente y desmonte la vista.
+    setTimeout(() => {
+      router.push(href);
+    }, 1500);
   };
 
   return (
