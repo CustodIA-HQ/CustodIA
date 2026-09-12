@@ -97,7 +97,8 @@ export default async function AuditPage({ params }: { params: Promise<{ taskId: 
                   {event.type === "event" && (
                     <div>
                       <div className="text-zinc-400 mb-2">
-                        Stage: {event.data.stage} | Type: {event.data.type}
+                        Stage: {String(event.data.stage ?? "")} | Type:{" "}
+                        {String(event.data.type ?? "")}
                       </div>
                       <pre className="text-xs text-zinc-300 whitespace-pre-wrap font-mono">
                         {JSON.stringify(event.data.payload, null, 2)}
@@ -110,7 +111,7 @@ export default async function AuditPage({ params }: { params: Promise<{ taskId: 
                       <div className="flex flex-col gap-1">
                         <span className="text-zinc-500 text-xs uppercase tracking-wider">Hash</span>
                         <span className="text-amber-500 font-semibold break-all">
-                          {event.data.hash}
+                          {String(event.data.hash ?? "")}
                         </span>
                       </div>
                       <details className="mt-2">
@@ -131,16 +132,16 @@ export default async function AuditPage({ params }: { params: Promise<{ taskId: 
                           Tx ID
                         </span>
                         <span className="text-emerald-400 font-semibold break-all">
-                          {event.data.txId}
+                          {String(event.data.txId ?? "")}
                         </span>
                       </div>
-                      {event.data.amount && (
+                      {Boolean(event.data.amount) && (
                         <div className="flex gap-2 items-center">
                           <span className="text-zinc-500 text-xs uppercase tracking-wider">
                             Amount
                           </span>
                           <span className="text-zinc-200">
-                            {event.data.amount}{" "}
+                            {String(event.data.amount ?? "")}{" "}
                             <span className="text-emerald-500 text-xs">HBAR</span>
                           </span>
                         </div>
@@ -149,9 +150,9 @@ export default async function AuditPage({ params }: { params: Promise<{ taskId: 
                         <span className="text-zinc-500 text-xs uppercase tracking-wider">
                           Network
                         </span>
-                        <span className="text-zinc-300">{event.data.network}</span>
+                        <span className="text-zinc-300">{String(event.data.network ?? "")}</span>
                       </div>
-                      {event.data.payload && (
+                      {Boolean(event.data.payload) && (
                         <details className="mt-2">
                           <summary className="cursor-pointer text-xs text-zinc-500 hover:text-zinc-300">
                             View Payload

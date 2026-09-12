@@ -58,7 +58,11 @@ it("rejects a replayed challenge when the store has consumed it", async () => {
   vi.stubEnv("SESSION_SECRET", "test-session-secret");
   const seen = new Set<string>();
   const store = {
-    consume: async (nonce: string) => (seen.has(nonce) ? false : (seen.add(nonce), true)),
+    consume: async (nonce: string) => {
+      if (seen.has(nonce)) return false;
+      seen.add(nonce);
+      return true;
+    },
   };
   const challenge = createChallenge({ address: account.address, agent, conversationId });
   const signature = await account.signMessage({ message: challenge.message });
