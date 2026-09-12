@@ -168,3 +168,21 @@ it("rejects a proposal owned by another wallet", async () => {
   const res = await post({ conversationId, proposalId, ...(await signedMandate(within)) });
   expect(res.status).toBe(404);
 });
+
+it("refuses to authorize an escalation-only proposal", async () => {
+  const row = proposalRow();
+  mocks.loadProposal.mockResolvedValue({
+    ...row,
+    body: {
+      ...row.body,
+      uiSpec: {
+        intent: "needs_human",
+        components: [{ type: "human_escalation", reason: "over envelope", blockedAction: "buy" }],
+        rationale: "r",
+      },
+    },
+  });
+  const res = await post({ conversationId, proposalId, ...(await signedMandate(within)) });
+  expect(res.status).toBe(409);
+  expect(mocks.enqueueJob).not.toHaveBeenCalled();
+});

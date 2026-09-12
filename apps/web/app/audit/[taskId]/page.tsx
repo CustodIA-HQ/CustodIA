@@ -9,8 +9,7 @@ interface TimelineEvent {
   timestamp: Date;
   type: "event" | "proposal" | "receipt";
   title: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: any;
+  data: unknown;
 }
 
 export default async function AuditPage({ params }: { params: Promise<{ taskId: string }> }) {

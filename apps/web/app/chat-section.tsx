@@ -12,6 +12,7 @@ import {
 } from "@custodia/schema";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { getAddress } from "viem";
+import { isAuthorizable } from "./authorizable";
 import { BalanceCard, type WalletSnapshot } from "./components/balance-card";
 import { EnsClaimForm } from "./components/ens-claim-form";
 import { GeneratedUx } from "./components/generated-ux";
@@ -249,15 +250,19 @@ function GuardPreview({
           writes the chart, UI spec, owner, agent, and directory <code>url</code> records.
         </p>
         <button
-          disabled={isPublishing || Boolean(guard.publishedName)}
+          disabled={isPublishing || Boolean(guard.publishedName) || !isAuthorizable(guard.uiSpec)}
           onClick={onPublish}
           type="button"
         >
-          {guard.publishedName
-            ? "Guard published to ENS"
-            : isPublishing
-              ? "Publishing to ENS…"
-              : "Sign agent & publish ENS guard"}
+          {!isAuthorizable(guard.uiSpec)
+            ? guard.uiSpec.intent === "needs_human"
+              ? "Needs a new signature — nothing to authorize"
+              : "Comparison only — nothing to authorize"
+            : guard.publishedName
+              ? "Guard published to ENS"
+              : isPublishing
+                ? "Publishing to ENS…"
+                : "Sign agent & publish ENS guard"}
         </button>
       </div>
     </section>

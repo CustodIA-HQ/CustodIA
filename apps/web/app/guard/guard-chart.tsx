@@ -13,12 +13,16 @@ import { useChartScrub, useContainerWidth } from "../ux/use-chart-scrub";
 
 const USD_QUOTES = new Set(["USDC", "USDT", "DAI"]);
 
-const formatPrice = (value: number, quote?: string): string => {
+const formatPrice = (value: number, quote?: string, mode?: "compact" | "detailed"): string => {
   if (!quote || USD_QUOTES.has(quote)) {
-    return formatFiat(value, value >= 1_000 ? "compact" : "detailed").display;
+    return formatFiat(value, mode ?? (value >= 1_000 ? "compact" : "detailed")).display;
   }
   return `${formatTokenAmount(value, undefined, "detailed").display} ${quote}`;
 };
+
+/** Axis ticks compact to "$2.5K" only when the visible range is wide enough to tell ticks apart. */
+const axisMode = (high: number, spread: number): "compact" | "detailed" =>
+  high > 0 && spread / high < 0.03 ? "detailed" : "compact";
 
 const formatWhen = (ts: number, withTime = true): string =>
   new Date(ts * 1_000).toLocaleString([], {
@@ -151,7 +155,7 @@ export default function GuardChart({
                   className="guard-chart__grid"
                 />
                 <text x={padding.left} y={gridY - 5} className="guard-chart__axis">
-                  {formatPrice(gridValue, market.quote)}
+                  {formatPrice(gridValue, market.quote, axisMode(high, spread))}
                 </text>
               </g>
             );

@@ -16,6 +16,7 @@ import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { verifyTypedData } from "viem";
 import { z } from "zod";
+import { isAuthorizable } from "../../authorizable";
 import { sessionForRequest } from "../auth/session";
 import { getAgentAddress } from "../identity";
 
@@ -136,6 +137,17 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "The mandate does not match the proposal." },
         { status: 400 },
+      );
+    }
+    // A proposal that grants no authority cannot be authorized: an escalation
+    // (needs_human) or a comparison has nothing for the agent to do inside.
+    if (!isAuthorizable(body.uiSpec)) {
+      return NextResponse.json(
+        {
+          error:
+            "This proposal is not authorizable — it asks for a new signature or only compares options.",
+        },
+        { status: 409 },
       );
     }
     const bounds = boundsFrom(body.uiSpec);

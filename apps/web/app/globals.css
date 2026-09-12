@@ -2283,3 +2283,30 @@ fieldset.wallet-card__mix {
 output.guard-chart__tooltip {
   display: grid;
 }
+
+/* While scrubbing, inline overlay labels step back so the tooltip is readable; the key still lists them. */
+.guard-chart__svg--scrub .guard-chart__overlay-label {
+  opacity: 0.2;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .guard-chart__overlay-label {
+    transition: opacity 120ms ease-out;
+  }
+}
+
+.receipt-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+a.receipt-id {
+  color: var(--custodia-accent);
+  text-decoration: none;
+}
+
+a.receipt-id:hover,
+a.receipt-id:focus-visible {
+  text-decoration: underline;
+}

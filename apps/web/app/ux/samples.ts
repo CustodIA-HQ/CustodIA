@@ -106,7 +106,7 @@ export const demoSpec = (template: TaskTemplate, knobs?: Partial<LabKnobs>): UIS
     volatility24hPct: volPct,
     drawdownRange: [Math.max(1, Math.round(volPct * 0.5)), Math.max(3, Math.round(volPct * 2))],
     maxTradeEnvelopeUsd: envelopeUsd,
-    explanation: `Mock risk: realized vol ${volPct}%, envelope $${envelopeUsd}, pair ${market.pair}.`,
+    explanation: `Mock risk: realized vol ${volPct.toFixed(2)}%, envelope $${envelopeUsd.toLocaleString("en-US")}, pair ${market.pair}.`,
   };
   const portfolio = { eth: knobs?.eth ?? "2.4", usdc: knobs?.usdc ?? "1800" };
   if (template === "needs_human") {

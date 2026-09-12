@@ -19,6 +19,16 @@ type TaskPayload = {
   notice: string;
 };
 
+/** Short, linked receipt id: Etherscan for Sepolia txs, HashScan for Hedera, plain for simulated. */
+const shortId = (id: string) => (id.length > 22 ? `${id.slice(0, 10)}…${id.slice(-6)}` : id);
+const receiptHref = (kind: string, txId: string): string | null => {
+  if (kind === "ens_tx" && txId.startsWith("0x")) return `https://sepolia.etherscan.io/tx/${txId}`;
+  if (kind === "x402" && /^0\.0\.\d+[@-]/.test(txId)) {
+    return `https://hashscan.io/testnet/transaction/${txId.replace("@", "-").replace(/\.(\d+)$/, "-$1")}`;
+  }
+  return null;
+};
+
 const getEthereum = () => {
   const provider = (
     window as Window & {
@@ -241,7 +251,21 @@ export default function TaskReviewPage() {
               <li key={row.id}>
                 <div>
                   <strong>{row.kind}</strong>
-                  <span>{row.txId}</span>
+                  {receiptHref(row.kind, row.txId) ? (
+                    <a
+                      className="receipt-id"
+                      href={receiptHref(row.kind, row.txId) ?? undefined}
+                      target="_blank"
+                      rel="noreferrer"
+                      title={row.txId}
+                    >
+                      {shortId(row.txId)} ↗
+                    </a>
+                  ) : (
+                    <span className="receipt-id" title={row.txId}>
+                      {shortId(row.txId)}
+                    </span>
+                  )}
                 </div>
               </li>
             ))}
