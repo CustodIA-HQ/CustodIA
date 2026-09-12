@@ -2310,3 +2310,21 @@ a.receipt-id:hover,
 a.receipt-id:focus-visible {
   text-decoration: underline;
 }
+
+/* Receipts: one full-width column (the token-row grid reserves 2rem for a glyph receipts do not have). */
+.receipt-list li {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.receipt-list li > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.75rem;
+  min-width: 0;
+}
+
+.receipt-id {
+  white-space: nowrap;
+  overflow-wrap: normal;
+}

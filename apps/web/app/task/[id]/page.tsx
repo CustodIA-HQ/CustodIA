@@ -246,7 +246,7 @@ export default function TaskReviewPage() {
         {data.receipts.length === 0 ? (
           <p className="guard-page__muted">No receipts yet.</p>
         ) : (
-          <ul className="wallet-card__tokens">
+          <ul className="wallet-card__tokens receipt-list">
             {data.receipts.map((row) => (
               <li key={row.id}>
                 <div>
