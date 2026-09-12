@@ -224,3 +224,37 @@ A strict subset of Stage 1 + Stage 3 + the demo, on the current architecture. Ev
 | duplicate webhooks, worker crashes, payment uncertainty, pending/reverted txs, reconciliation | 1, 3, 5 |
 | chat = summaries + links; controls stay in review view | 3, 6 |
 | v1 mandates viewable, not executable | 4 |
+
+---
+
+## v1.1 additions (2026-09-12) — see `docs/superpowers/specs/2026-09-12-custodia-v1.1-addendum.md`
+
+**New global constraint:** mobile-first. WalletConnect for every signature; Telegram Mini App as
+the primary surface; touch-first components; one-column chart-first layouts below 900 px.
+Stage 6 (Channels) absorbs the Mini App and WalletConnect work and moves **before** Stage 4 —
+nothing can be signed on a phone until it lands.
+
+**Revised order:** 1 Foundation ✅ → 6a Mobile signing + Mini App → 2 Wallet/data → 3 Decision
+UX → 4 Authorization (vault) → 5 Autonomy → 6b Cross-channel/ENS sync → 8 Derivatives →
+9 Protection → 7 WhatsApp.
+
+### Stage 8 — Derivatives (Arbitrum Sepolia)
+| Path | Responsibility |
+|---|---|
+| `contracts/` (second deployment) | `TaskVault` on Arbitrum Sepolia + `GmxPerpAdapter` (allow-listed target) |
+| `packages/venues/gmx-v2-arbitrum-sepolia/` | market discovery, quote, open/close/adjust with slippage + leverage caps |
+| `packages/schema/src/mandate-v2.ts` | venue/market/maxNotional/maxLeverage/stop fields; leverage off unless signed on |
+| `packages/runtime/src/handlers/execute-perp.ts` | same preview → approval → submit → confirm → reconcile loop |
+**Gate:** one bounded position opened and closed autonomously; a leverage increase beyond the mandate reverts on-chain.
+
+### Stage 9 — Protection
+| Path | Responsibility |
+|---|---|
+| `apps/risk-api` `POST /risk/hedge` | deductible/duration/budget → payoff scenarios; premium labeled "model estimate" unless a venue quote is attached |
+| `packages/venues/options-*` | only if an options venue exists on a supported testnet; otherwise stage stays estimate-only |
+**Gate:** the simulation is unmistakably labeled; if quoted, the purchase runs under the vault like any execution.
+
+### Product rules from the 2026-09-12 run (now requirements)
+Only authorizable proposals become mandates (409 otherwise); one ENS identity per wallet;
+envelopes derive from wallet holdings; unsupported requests explain, never generate controls;
+every autonomous action is recorded and revocation blocks the next one.
