@@ -17,7 +17,8 @@ const cookieValue = (header: string | null): string | undefined =>
     ?.slice(SESSION_COOKIE_NAME.length + 1);
 
 /**
- * GET /api/runs/:id/events — Server-Sent Events stream.
+ * GET /api/runs/:id/events — Server-Sent Events stream, or a JSON snapshot
+ * when the client does not accept text/event-stream.
  *
  * Emits `data: <json>\n\n` for each new run_event row as soon as it lands,
  * and a final `data: {"done":true}\n\n` when the run reaches a terminal state.
@@ -46,6 +47,18 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
   }
 
   let cursor = Number(new URL(request.url).searchParams.get("after") ?? "0") || 0;
+
+  // Content negotiation: browsers using EventSource send `Accept: text/event-stream`
+  // and get the live stream; everything else (scripts, tests, the polling fallback)
+  // gets a JSON snapshot of the events after the cursor.
+  const wantsStream = (request.headers.get("accept") ?? "").includes("text/event-stream");
+  if (!wantsStream) {
+    const events = await listEvents(db, id, cursor);
+    return new Response(JSON.stringify({ runId: id, status: run.status, events }), {
+      status: 200,
+      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+    });
+  }
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
