@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { PRODUCT_CASES } from "./cases";
 import { GeneratedUx } from "./components/generated-ux";
 import { SiteFooter, SiteHeader } from "./components/site-header";
@@ -25,12 +26,12 @@ export default function Home() {
             ETH/USDC from The Graph; paid risk context on Hedera.
           </p>
           <div className="home-hero__actions">
-            <a className="btn-primary" href="/chat" target="_blank" rel="noopener noreferrer">
+            <Link className="btn-primary" href="/chat">
               Open chat
-            </a>
-            <a className="btn-ghost" href="/ux">
+            </Link>
+            <Link className="btn-ghost" href="/ux">
               See generated UX
-            </a>
+            </Link>
           </div>
           <p className="home-hero__note">
             Sepolia and Hedera testnet. Test tokens have no value. Execution is simulated.
