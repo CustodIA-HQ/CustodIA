@@ -1,4 +1,8 @@
+import "../../../env";
+
 import { createDb, PostgresChallengeStore } from "@custodia/db";
+import { getParentName, makeOwnerName } from "@custodia/ens";
+import { getStoredUserLabel } from "@custodia/runtime";
 import { NotImplementedError } from "@custodia/schema";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -42,11 +46,22 @@ export async function POST(request: Request) {
       agent: getAgentAddress(),
       store: getChallengeStore(),
     });
+    let ensName: string | null = null;
+    try {
+      const label = await getStoredUserLabel(createDb() as never, session.address);
+      if (label) ensName = makeOwnerName(label, getParentName());
+    } catch (error) {
+      console.error(
+        `[auth] ENS lookup skipped: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
     const response = NextResponse.json({
       authenticated: true,
       address: session.address,
       conversationId: session.conversationId,
       expiresAt: session.expiresAt,
+      ensName,
+      needsEnsClaim: !ensName,
     });
     response.cookies.set(SESSION_COOKIE_NAME, token, {
       httpOnly: true,

@@ -72,6 +72,45 @@ export function useRun(runId: string | null) {
     .filter((e) => e.type === "text")
     .map((e) => (e.payload as { delta?: string })?.delta ?? "")
     .join("");
+
+  const toolOutput = (name: string): unknown => {
+    const matches = events.filter((e) => {
+      if (e.type !== "tool") return false;
+      const p = e.payload as { name?: string; output?: unknown } | undefined;
+      return p?.name === name && p.output != null;
+    });
+    const output = (matches.at(-1)?.payload as { output?: unknown } | undefined)?.output;
+    if (typeof output === "string") {
+      try {
+        return JSON.parse(output);
+      } catch {
+        return undefined;
+      }
+    }
+    return output;
+  };
+
+  const portfolio = toolOutput("read_portfolio") as
+    | {
+        chain?: string;
+        owner?: string;
+        block?: string;
+        eth?: string;
+        usdc?: string;
+        scope?: string;
+      }
+    | undefined;
+
+  const market = toolOutput("get_market_context") as
+    | { pair?: string; priceUsd?: number; hourly?: Array<{ ts: number; close: number }> }
+    | undefined;
+
+  const options = events.find((e) => {
+    if (e.type !== "tool") return false;
+    const p = e.payload as { name?: string; output?: unknown } | undefined;
+    return p?.name === "quick_options";
+  })?.payload as { output?: { question: string; choices: string[] } } | undefined;
+
   return {
     status,
     events,
@@ -79,6 +118,9 @@ export function useRun(runId: string | null) {
     stageLabel: STAGE_LABELS[stage] ?? stage,
     text,
     result,
+    portfolio,
+    market,
+    options: options?.output,
     error: errorEvent?.error ?? null,
     startedAt,
   };
