@@ -4,6 +4,7 @@ import {
   chatHandler,
   ensAttachHandler,
   ensPublishHandler,
+  ensVerifySubdomainHandler,
   HandlerRegistry,
   monitorHandler,
   notifyHandler,
@@ -22,6 +23,7 @@ const registry = new HandlerRegistry()
   .register("chat.run", chatHandler)
   .register("ens.attach", ensAttachHandler)
   .register("ens.publish", ensPublishHandler)
+  .register("ens.verify.subdomain", ensVerifySubdomainHandler)
   .register("monitor.active", monitorHandler)
   .register("notify.drain", notifyHandler);
 

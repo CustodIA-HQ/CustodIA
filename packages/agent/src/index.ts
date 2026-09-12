@@ -294,4 +294,15 @@ export { composeNeedsHuman, composeUISpec } from "./compose.js";
 export { classifyIntent } from "./router.js";
 export { type PaidFetchResult, PaymentError, paidFetch } from "./x402.js";
 export { hcsAuditHandler, submitAuditLog } from "./hcs-audit.js";
+export {
+  intentAgent,
+  marketAgent,
+  uiSpecAgent,
+  checkPolicy,
+  type IntentResult,
+  type MarketAgentInput,
+  type MarketAgentResult,
+  type UISpecAgentInput,
+  type UISpecAgentResult,
+} from "./agents.js";
 
