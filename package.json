@@ -25,6 +25,7 @@
     "verify:x402": "tsx scripts/verify-x402.ts",
     "verify:graph": "tsx scripts/verify-graph.ts",
     "verify:durability": "tsx scripts/verify-durability.ts",
+    "demo:e2e": "tsx scripts/e2e-demo.ts",
     "agent:cli": "tsx scripts/agent-cli.ts"
   },
   "devDependencies": {
