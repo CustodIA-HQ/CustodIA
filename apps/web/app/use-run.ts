@@ -21,7 +21,7 @@ export const STAGE_LABELS: Record<string, string> = {
   failed: "Failed",
 };
 
-/** Polls GET /api/runs/:id/events every second until the run finishes. Survives reloads: pass the stored runId. */
+/** Connects to the SSE stream at GET /api/runs/:id/events and accumulates events. */
 export function useRun(runId: string | null) {
   const [events, setEvents] = useState<RunEvent[]>([]);
   const [status, setStatus] = useState<RunStatus | null>(null);
@@ -30,29 +30,60 @@ export function useRun(runId: string | null) {
 
   useEffect(() => {
     if (!runId) return;
-    let stop = false;
     last.current = 0;
     setEvents([]);
-    const poll = async () => {
-      if (stop) return;
-      const res = await fetch(`/api/runs/${runId}/events?after=${last.current}`);
-      if (!res.ok) {
-        setStatus("failed");
+    setStatus(null);
+
+    const url = `/api/runs/${runId}/events?after=0`;
+    const source = new EventSource(url);
+
+    source.onmessage = (ev: MessageEvent<string>) => {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(ev.data);
+      } catch {
         return;
       }
-      const body = (await res.json()) as { status: RunStatus; events: RunEvent[] };
-      if (body.events.length) {
-        last.current = body.events[body.events.length - 1]?.seq ?? last.current;
-        setEvents((prev) => [...prev, ...body.events]);
+      // Sentinel emitted by the SSE route when the run reaches a terminal state
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        "done" in parsed &&
+        (parsed as { done: boolean }).done
+      ) {
+        const sentinel = parsed as { status?: RunStatus };
+        if (sentinel.status) setStatus(sentinel.status);
+        source.close();
+        return;
       }
-      setStatus(body.status);
-      if (!stop && body.status !== "done" && body.status !== "failed") setTimeout(poll, 1000);
+      // Regular run_event row
+      const event = parsed as RunEvent;
+      if (typeof event.seq === "number") {
+        last.current = Math.max(last.current, event.seq);
+        setEvents((prev) => [...prev, event]);
+      }
     };
-    void poll();
+
+    source.onerror = () => {
+      // Network drop or Vercel 45 s timeout — fall back to a single JSON poll.
+      source.close();
+      void fetch(`/api/runs/${runId}/events?after=${last.current}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((body: { status?: RunStatus; events?: RunEvent[] } | null) => {
+          if (!body) return;
+          if (body.events?.length) {
+            setEvents((prev) => [...prev, ...(body.events ?? [])]);
+          }
+          if (body.status) setStatus(body.status);
+        })
+        .catch(() => undefined);
+    };
+
     return () => {
-      stop = true;
+      source.close();
     };
   }, [runId]);
+
 
   const stage = events.length ? (events[events.length - 1]?.stage ?? "queued") : "queued";
   const errorEvent = events.find((e) => e.type === "error")?.payload as
