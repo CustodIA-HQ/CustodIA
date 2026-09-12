@@ -8,6 +8,8 @@ export interface WalletSnapshot {
   wallet: string;
   eth: string;
   usdc: string;
+  /** Observable only in this build (no vault wrap/unwrap yet). */
+  weth?: string;
   scope?: string;
   notInspected?: string;
   block?: string;
@@ -94,6 +96,7 @@ export function BalanceCard({
   wallet,
   eth,
   usdc,
+  weth,
   scope,
   notInspected,
   block,
@@ -114,6 +117,8 @@ export function BalanceCard({
   const totalFmt = formatFiat(totalUsd, "detailed");
   const ethAmt = formatTokenAmount(ethAmount, priceUsd);
   const usdcAmt = formatTokenAmount(usdcAmount, 1);
+  const wethAmount = weth === undefined ? Number.NaN : Number(weth);
+  const wethAmt = formatTokenAmount(wethAmount, priceUsd);
   const ethFiat = formatFiat(ethUsd, "compact");
   const usdcFiat = formatFiat(usdcUsd, "compact");
   const closes = hourly?.slice(-168).map((point) => point.close) ?? [];
@@ -213,6 +218,21 @@ export function BalanceCard({
             </span>
           </div>
         </li>
+        {Number.isFinite(wethAmount) && wethAmount > 0 && (
+          <li>
+            <TokenGlyph symbol="ETH" />
+            <div>
+              <strong>WETH</strong>
+              <span>Wrapped Ether · observable</span>
+            </div>
+            <div className="wallet-card__token-amt">
+              <strong className="wallet-num" title={wethAmt.raw || undefined}>
+                {wethAmt.display}
+              </strong>
+              <span className="wallet-num">not tradable yet</span>
+            </div>
+          </li>
+        )}
       </ul>
 
       <p className="wallet-card__note">

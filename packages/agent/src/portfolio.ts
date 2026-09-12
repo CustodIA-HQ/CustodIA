@@ -1,4 +1,4 @@
-import { coverageFor, NATIVE_ETH, SEPOLIA_USDC } from "@custodia/registry";
+import { coverageFor, NATIVE_ETH, SEPOLIA_USDC, SEPOLIA_WETH } from "@custodia/registry";
 import type { PortfolioSnapshot } from "@custodia/schema";
 import { SEPOLIA_CHAIN_ID } from "@custodia/schema";
 import { createPublicClient, erc20Abi, formatEther, formatUnits, http } from "viem";
@@ -16,18 +16,23 @@ export async function readPortfolio(owner: `0x${string}`) {
   if ((await client.getChainId()) !== 11155111)
     throw new Error("Portfolio RPC must use Ethereum Sepolia testnet.");
   const blockNumber = await client.getBlockNumber();
-  const [eth, usdc] = await Promise.all([
-    client.getBalance({ address: owner, blockNumber }),
+  const erc20Balance = (address: `0x${string}`) =>
     client.readContract({
-      address: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+      address,
       abi: erc20Abi,
       functionName: "balanceOf",
       args: [owner],
       blockNumber,
-    }),
+    });
+  const [eth, usdc, weth] = await Promise.all([
+    client.getBalance({ address: owner, blockNumber }),
+    erc20Balance(SEPOLIA_USDC),
+    // WETH is *observable* in the registry: shown as a holding, not evaluable
+    // or tradable until the vault wraps/unwraps it (Stage 4).
+    erc20Balance(SEPOLIA_WETH),
   ]);
   const observedAt = Math.floor(Date.now() / 1000);
-  const coverage = coverageFor([NATIVE_ETH, SEPOLIA_USDC]);
+  const coverage = coverageFor([NATIVE_ETH, SEPOLIA_USDC, SEPOLIA_WETH]);
   const snapshot: PortfolioSnapshot = {
     owner,
     vault: null,
@@ -51,6 +56,14 @@ export async function readPortfolio(owner: `0x${string}`) {
         balance: usdc.toString(),
         where: "wallet",
       },
+      {
+        asset: "eip155:11155111:weth",
+        contract: SEPOLIA_WETH,
+        symbol: "WETH",
+        decimals: 18,
+        balance: weth.toString(),
+        where: "wallet",
+      },
     ],
     coverage,
     provenance: {
@@ -67,8 +80,9 @@ export async function readPortfolio(owner: `0x${string}`) {
     block: blockNumber.toString(),
     eth: formatEther(eth),
     usdc: formatUnits(usdc, 6),
+    weth: formatEther(weth),
     snapshot,
     scope:
-      "Testnet ETH and Circle test USDC only. These tokens have no real monetary value. Other tokens, chains, lending and liquidity positions are not inspected. This is a current balance snapshot, not portfolio history. Vault balances are empty until Stage 4 funds a TaskVault.",
+      "Testnet ETH, Circle test USDC, and WETH (observable only — not tradable until a TaskVault exists). These tokens have no real monetary value. Other tokens, chains, lending and liquidity positions are not inspected. This is a current balance snapshot, not portfolio history. Vault balances are empty until Stage 4 funds a TaskVault.",
   };
 }
