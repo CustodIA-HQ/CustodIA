@@ -114,9 +114,21 @@ importers:
       '@custodia/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@custodia/decision':
+        specifier: workspace:*
+        version: link:../../packages/decision
       '@custodia/ens':
         specifier: workspace:*
         version: link:../../packages/ens
+      '@custodia/graph':
+        specifier: workspace:*
+        version: link:../../packages/graph
+      '@custodia/policy':
+        specifier: workspace:*
+        version: link:../../packages/policy
+      '@custodia/registry':
+        specifier: workspace:*
+        version: link:../../packages/registry
       '@custodia/runtime':
         specifier: workspace:*
         version: link:../../packages/runtime
@@ -179,12 +191,18 @@ importers:
       '@custodia/db':
         specifier: workspace:*
         version: link:../db
+      '@custodia/decision':
+        specifier: workspace:*
+        version: link:../decision
       '@custodia/graph':
         specifier: workspace:*
         version: link:../graph
       '@custodia/policy':
         specifier: workspace:*
         version: link:../policy
+      '@custodia/registry':
+        specifier: workspace:*
+        version: link:../registry
       '@custodia/schema':
         specifier: workspace:*
         version: link:../schema
@@ -225,6 +243,12 @@ importers:
       drizzle-kit:
         specifier: ^0.31.0
         version: 0.31.10
+
+  packages/decision:
+    dependencies:
+      '@custodia/schema':
+        specifier: workspace:*
+        version: link:../schema
 
   packages/ens:
     dependencies:
@@ -268,6 +292,12 @@ importers:
       '@vitest/coverage-v8':
         specifier: ^3.2.0
         version: 3.2.7(supports-color@8.1.1)(vitest@3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(supports-color@8.1.1)(terser@5.51.2)(tsx@4.23.13))
+
+  packages/registry:
+    dependencies:
+      '@custodia/schema':
+        specifier: workspace:*
+        version: link:../schema
 
   packages/runtime:
     dependencies:
