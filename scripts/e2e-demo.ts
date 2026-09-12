@@ -157,31 +157,39 @@ const cl = await post(
   { label, message: claimMessage, signature: await user.signMessage({ message: claimMessage }) },
   cookie,
 );
-const clb = await j(cl);
+const clb = (await j(cl)) as { error?: string };
 log(`   POST /api/ens/claim → ${cl.status} ${JSON.stringify(clb).slice(0, 200)}`);
-if (!cl.ok) issue(`ENS claim failed: ${JSON.stringify(clb)}`);
-let attached = false;
-for (let i = 0; i < 40 && !attached; i++) {
-  await sleep(3000);
-  const [jobRow] = await db
-    .select({ status: tables.jobs.status, lastError: tables.jobs.lastError })
-    .from(tables.jobs)
-    .where(eq(tables.jobs.kind, "ens.attach"))
-    .orderBy(tables.jobs.id)
-    .limit(1);
-  const rows = await db
-    .select({ status: tables.jobs.status, lastError: tables.jobs.lastError, id: tables.jobs.id })
-    .from(tables.jobs)
-    .where(eq(tables.jobs.kind, "ens.attach"));
-  const mine = rows.at(-1) ?? jobRow;
-  if (mine?.status === "done") attached = true;
-  if (mine?.status === "failed") {
-    issue(`ens.attach job failed: ${mine.lastError}`);
-    break;
+let identityLabel = label;
+if (cl.status === 409 && /already claimed/i.test(clb.error ?? "")) {
+  // One identity per wallet is the rule; reuse the existing label.
+  const [existing] = await db
+    .select({ ensLabel: tables.users.ensLabel })
+    .from(tables.users)
+    .where(eq(tables.users.wallet, user.address.toLowerCase()));
+  identityLabel = existing?.ensLabel ?? label;
+  log(
+    `   ✓ wallet already has an identity (${identityLabel}.custodia.eth) — second claim correctly refused`,
+  );
+} else if (!cl.ok) {
+  issue(`ENS claim failed: ${JSON.stringify(clb)}`);
+} else {
+  let attached = false;
+  for (let i = 0; i < 40 && !attached; i++) {
+    await sleep(3000);
+    const rows = await db
+      .select({ status: tables.jobs.status, lastError: tables.jobs.lastError })
+      .from(tables.jobs)
+      .where(eq(tables.jobs.kind, "ens.attach"));
+    const mine = rows.at(-1);
+    if (mine?.status === "done") attached = true;
+    if (mine?.status === "failed") {
+      issue(`ens.attach job failed: ${mine.lastError}`);
+      break;
+    }
   }
+  log(`   ens.attach job: ${attached ? "done ✓" : "not done"}`);
 }
-log(`   ens.attach job: ${attached ? "done ✓" : "not done"}`);
-await shots("ens-directory", `/${label}.custodia.eth`, cookie);
+await shots("ens-directory", `/${identityLabel}.custodia.eth`, cookie);
 
 // ── 4. chat cases ─────────────────────────────────────────────────────────────
 log("## 4. Prompts");
