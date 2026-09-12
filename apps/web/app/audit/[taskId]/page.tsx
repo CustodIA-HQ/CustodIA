@@ -9,7 +9,7 @@ interface TimelineEvent {
   timestamp: Date;
   type: "event" | "proposal" | "receipt";
   title: string;
-  data: unknown;
+  data: Record<string, unknown>;
 }
 
 export default async function AuditPage({ params }: { params: Promise<{ taskId: string }> }) {
