@@ -21,6 +21,7 @@ import {
   describeIdentity,
   describeMyName,
   isAutoLabel,
+  isDisconnect,
   isGreeting,
   parseNameCommand,
   releaseUrl,

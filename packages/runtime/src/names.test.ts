@@ -2,6 +2,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import {
   createClaimToken,
   isAutoLabel,
+  isDisconnect,
   isGreeting,
   parseNameCommand,
   readClaimToken,
