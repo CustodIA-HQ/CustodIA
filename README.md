@@ -95,3 +95,35 @@ take DNS-encoded names while `setText` takes a namehash.
 `xyz.custodia.*` ENS record keys are ours. This project is **AP2-style**, not AP2-compliant —
 the device/trust-layer requirements of AP2 are out of scope for prototype v0, and no
 claim is made otherwise.
+## Paper trading (real data, simulated execution)
+
+On an active, signed task at `/task/<id>`, choose ETH→USDC or USDC→ETH and a
+paper notional. The first request copies the connected owner's supported Sepolia
+ETH/USDC balances into a separate receipt-backed ledger. Subsequent requests use
+that ledger, never reset to the wallet balance. Deposits to the wallet do not
+refill it. WETH and other assets are excluded.
+
+The fill model uses the live Messari Uniswap V3 ETH/USDC reference price, 5 bps
+fees and 10 bps adverse slippage. USDC is valued at $1 for simulation. Gas,
+latency, order-book liquidity, MEV and actual mainnet execution are not modeled.
+Fees, balances, cumulative notional, mark-to-market equity and P&L are recorded
+with source block/time and mandate hash. P&L is relative to initial paper equity.
+The existing signed asset permissions, rebalance flag, expiry, trade/notional
+caps and paper high-water drawdown limit gate fills. A denial does not spend funds.
+
+`POST /api/tasks/:id/simulate` takes `{fromAsset,toAsset,notionalUsd,requestId,feeBps?,slippageBps?}`;
+cost assumptions are configurable from 0 to 1,000 bps in the review view;
+`requestId` is a UUID reused on retries. Task row locking serializes fills and
+revocation. Receipts use `kind: paper`; old simulated receipts remain as historical
+policy demonstrations and their allowed notionals count toward the task budget.
+
+`POST /api/tasks/:id/replay` takes `{targetEthPct,feeBps?,slippageBps?}` and replays
+the available hourly history. It places today's wallet balances at the start of
+that window and applies current limits hypothetically with dates shifted to the
+window. Signals use the previous close and fills the next close. Results include
+buy-and-hold comparison and all observations for repeatable analysis. It does not
+write fills or authorize actions, and is not actual wallet performance history.
+
+Live priced trades are user-triggered; replay runs the allocation strategy
+through history automatically. This addition does not enable an unattended
+live-market trading worker or move any tokens.
