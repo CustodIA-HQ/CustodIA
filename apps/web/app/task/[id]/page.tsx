@@ -5,7 +5,7 @@ import { ownerNameFromTaskEns, taskDirectoryPath } from "@custodia/ens/paths";
 import type { Mandate, PolicyDecision, UISpec } from "@custodia/schema";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type TaskPayload = {
   task: { id: string; ensName: string; status: string; template: string | null };
@@ -47,6 +47,18 @@ export default function TaskReviewPage() {
   const [data, setData] = useState<TaskPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [side, setSide] = useState("sell");
+  const [notional, setNotional] = useState(1);
+  const [targetPct, setTargetPct] = useState(50);
+  const [feeBps, setFeeBps] = useState(5);
+  const [slippageBps, setSlippageBps] = useState(10);
+  const [replay, setReplay] = useState<{
+    equityUsd: number;
+    buyAndHoldUsd: number;
+    assumptions: string;
+    results: Array<{ observation: { ts: number; priceUsd: number }; equityUsd: number }>;
+  } | null>(null);
+  const pendingRequest = useRef<string | null>(null);
   const [lastDecision, setLastDecision] = useState<PolicyDecision | null>(null);
 
   const load = useCallback(async () => {
@@ -67,17 +79,44 @@ export default function TaskReviewPage() {
   const simulate = async () => {
     setBusy(true);
     try {
+      pendingRequest.current ??= crypto.randomUUID();
       const response = await fetch(`/api/tasks/${id}/simulate`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ fromAsset: "ETH", toAsset: "USDC", notionalUsd: 1 }),
+        body: JSON.stringify({
+          fromAsset: side === "buy" ? "USDC" : "ETH",
+          toAsset: side === "buy" ? "ETH" : "USDC",
+          notionalUsd: notional,
+          requestId: pendingRequest.current,
+          feeBps,
+          slippageBps,
+        }),
       });
       const payload = (await response.json()) as { error?: string; decision?: PolicyDecision };
       if (!response.ok) throw new Error(payload.error ?? "Simulate failed.");
+      pendingRequest.current = null;
       setLastDecision(payload.decision ?? null);
       await load();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Simulate failed.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const replayHistory = async () => {
+    setBusy(true);
+    try {
+      const response = await fetch(`/api/tasks/${id}/replay`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ targetEthPct: targetPct, feeBps, slippageBps }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "Replay failed");
+      setReplay(payload);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Replay failed");
     } finally {
       setBusy(false);
     }
@@ -126,6 +165,15 @@ export default function TaskReviewPage() {
     );
   }
 
+  const paper = [...data.receipts].filter((r) => r.kind === "paper").sort((a, b) => b.id - a.id)[0]
+    ?.payload as
+    | {
+        state: { eth: number; usdc: number; feesUsd: number };
+        equityUsd: number;
+        pnlUsd: number;
+        observation: { ts: number; priceUsd: number };
+      }
+    | undefined;
   const uiSpec = data.proposal?.body.uiSpec;
   const allocation = uiSpec?.components.find((c) => c.type === "allocation_selector");
   const protection = uiSpec?.components.find((c) => c.type === "protection_simulation");
@@ -212,16 +260,73 @@ export default function TaskReviewPage() {
         <p className="guard-card__eyebrow">Autonomy</p>
         <h2>Simulate and revoke</h2>
         <p className="guard-page__muted">
-          Simulate runs the policy engine against a $1 ETH→USDC rebalance and records a simulated
-          receipt. Revoke requires a fresh wallet signature and blocks new actions.
+          Real market data · simulated execution. A separate paper ledger starts from your Sepolia
+          ETH/USDC balances. Fills default to a 5 bps fee and 10 bps adverse slippage; gas,
+          liquidity impact and latency are not modeled. No tokens move. Revoke blocks new fills.
         </p>
+        <label>
+          Direction{" "}
+          <select
+            disabled={busy}
+            value={side}
+            onChange={(e) => {
+              setSide(e.target.value);
+              pendingRequest.current = null;
+            }}
+          >
+            <option value="sell">Sell ETH for USDC</option>
+            <option value="buy">Buy ETH with USDC</option>
+          </select>
+        </label>
+        <label>
+          Paper notional (USD){" "}
+          <input
+            disabled={busy}
+            type="number"
+            min="0.01"
+            step="0.01"
+            value={notional}
+            onChange={(e) => {
+              setNotional(Number(e.target.value));
+              pendingRequest.current = null;
+            }}
+          />
+        </label>
+        <label>
+          Fee (basis points; 100 = 1%){" "}
+          <input
+            type="number"
+            min="0"
+            max="1000"
+            disabled={busy}
+            value={feeBps}
+            onChange={(e) => {
+              setFeeBps(Number(e.target.value));
+              pendingRequest.current = null;
+            }}
+          />
+        </label>
+        <label>
+          Adverse slippage (basis points){" "}
+          <input
+            type="number"
+            min="0"
+            max="1000"
+            disabled={busy}
+            value={slippageBps}
+            onChange={(e) => {
+              setSlippageBps(Number(e.target.value));
+              pendingRequest.current = null;
+            }}
+          />
+        </label>
         <div className="guard-preview__action">
           <button
             disabled={busy || data.task.status !== "active"}
             onClick={() => void simulate()}
             type="button"
           >
-            {busy ? "Working…" : "Simulate action"}
+            {busy ? "Working…" : "Simulate priced trade"}
           </button>
           <button
             disabled={busy || data.task.status === "revoked"}
@@ -240,6 +345,73 @@ export default function TaskReviewPage() {
         {error && <p className="chat-error">{error}</p>}
       </section>
 
+      <section className="guard-page__details">
+        <h2>Paper portfolio</h2>
+        {paper ? (
+          <>
+            <p>
+              {paper.state.eth.toFixed(6)} ETH / {paper.state.usdc.toFixed(2)} USDC
+            </p>
+            <p>
+              Equity ${paper.equityUsd.toFixed(2)} · P&amp;L ${paper.pnlUsd.toFixed(2)} · fees $
+              {paper.state.feesUsd.toFixed(4)}
+            </p>
+            <p>
+              Marked at ${paper.observation.priceUsd.toFixed(2)} on{" "}
+              {new Date(paper.observation.ts * 1000).toISOString()}. Values update when a paper
+              action is recorded.
+            </p>
+          </>
+        ) : (
+          <p>No paper ledger yet. The first trade request snapshots supported wallet holdings.</p>
+        )}
+        <h2>Historical replay</h2>
+        <label>
+          Target ETH %{" "}
+          <input
+            type="number"
+            min="0"
+            max="100"
+            value={targetPct}
+            onChange={(e) => setTargetPct(Number(e.target.value))}
+          />
+        </label>
+        <button disabled={busy || !data.mandate} type="button" onClick={() => void replayHistory()}>
+          Replay available history
+        </button>
+        {replay && (
+          <>
+            <p>
+              Final equity ${replay.equityUsd.toFixed(2)} · buy and hold $
+              {replay.buyAndHoldUsd.toFixed(2)}
+            </p>
+            <p>{replay.assumptions}</p>
+            <details>
+              <summary>Replay observations ({replay.results.length})</summary>
+              <div style={{ overflowX: "auto" }}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Time (UTC)</th>
+                      <th>ETH price</th>
+                      <th>Paper equity</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {replay.results.map((r) => (
+                      <tr key={r.observation.ts}>
+                        <td>{new Date(r.observation.ts * 1000).toISOString()}</td>
+                        <td>{r.observation.priceUsd.toFixed(2)}</td>
+                        <td>{r.equityUsd.toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          </>
+        )}
+      </section>
       <section className="guard-page__details">
         <p className="guard-card__eyebrow">Receipts</p>
         <h2>Audit</h2>

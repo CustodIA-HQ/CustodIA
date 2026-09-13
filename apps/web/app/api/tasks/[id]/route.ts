@@ -32,6 +32,6 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
     receipts,
     simulated: true,
     notice:
-      "Hackathon build: execution is simulated. No TaskVault swap is submitted. Stage 4/5 on-chain execution is deferred.",
+      "Real market data · simulated execution. Paper ETH/USDC balances are separate from your wallet. No on-chain swap is submitted.",
   });
 }

@@ -1,6 +1,6 @@
 import "../../../../env";
 
-import { createDb } from "@custodia/db";
+import { createPooledDb } from "@custodia/db";
 import { loadEnsConfig, revokeAgent } from "@custodia/ens";
 import { loadTask, transitionTask } from "@custodia/runtime";
 import { NextResponse } from "next/server";
@@ -15,6 +15,8 @@ const BodySchema = z.object({
 });
 
 export const dynamic = "force-dynamic";
+
+let database: ReturnType<typeof createPooledDb> | undefined;
 
 export async function POST(request: Request, ctx: { params: Promise<{ id: string }> }) {
   const session = sessionFrom(request);
@@ -39,7 +41,8 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
   if (!valid)
     return NextResponse.json({ error: "Revoke signature was rejected." }, { status: 401 });
 
-  const db = createDb();
+  database ??= createPooledDb();
+  const db = database;
   const task = await loadTask(db as never, id);
   if (!task || task.userWallet.toLowerCase() !== session.address.toLowerCase()) {
     return NextResponse.json({ error: "Task not found." }, { status: 404 });
