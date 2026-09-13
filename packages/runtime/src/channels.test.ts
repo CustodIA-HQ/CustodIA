@@ -6,13 +6,15 @@ import {
   channelReplyText,
   findChannelBinding,
   queueChannelReply,
+  readWalletViewToken,
   sendWhatsAppMessage,
   summarizeRunEvents,
+  wantsTextOnly,
 } from "./channels.js";
 import { notifyHandler } from "./handlers/notify.js";
 import { leaseJob } from "./jobs.js";
 import { HandlerRegistry, tick } from "./registry.js";
-import { completeRun, createRun } from "./runs.js";
+import { appendEvent, completeRun, createRun } from "./runs.js";
 
 let ctx: Awaited<ReturnType<typeof createTestDb>>;
 beforeAll(async () => {
@@ -160,4 +162,81 @@ it("sends WhatsApp text through the Cloud API with the bearer token", async () =
 it("refuses to send WhatsApp without credentials instead of pretending", async () => {
   vi.stubEnv("WHATSAPP_ACCESS_TOKEN", "");
   await expect(sendWhatsAppMessage("1", "x")).rejects.toThrow(/WHATSAPP_ACCESS_TOKEN/);
+});
+
+it("sends a holdings answer with a graph link, or text only when asked", async () => {
+  vi.stubEnv("SESSION_SECRET", "test-session-secret");
+  vi.stubEnv("APP_URL", "https://app.test");
+  const events = [
+    {
+      stage: "inspecting_wallet",
+      type: "tool",
+      payload: {
+        type: "tool",
+        name: "read_portfolio",
+        output: {
+          eth: "1",
+          usdc: "0",
+          weth: "0",
+          chain: "Ethereum Sepolia testnet",
+          owner: "0xowner",
+        },
+      },
+    },
+    {
+      stage: "fetching_context",
+      type: "tool",
+      payload: {
+        type: "tool",
+        name: "get_market_context",
+        output: {
+          priceUsd: 2000,
+          hourly: [
+            { ts: 1, close: 1990 },
+            { ts: 2, close: 2000 },
+          ],
+        },
+      },
+    },
+    {
+      stage: "fetching_context",
+      type: "text",
+      payload: { type: "text", delta: "Current snapshot." },
+    },
+  ] as const;
+  const ask = async (content: string, id: string) => {
+    const { runId } = await createRun(ctx.db, {
+      conversationId: `telegram:${id}`,
+      ownerWallet: "0xowner",
+      kind: "chat",
+      clientRequestId: `telegram:${id}`,
+      input: {
+        messages: [{ role: "user", content }],
+        agent: "0xagent",
+        reply: { channel: "telegram", chatId: id },
+      },
+    });
+    for (const e of events) await appendEvent(ctx.db, runId, e);
+    await completeRun(ctx.db, runId, { rationale: "", taskId: null });
+    await queueChannelReply(ctx.db, runId);
+    const [row] = await ctx.db.select().from(tables.outbox).where(eq(tables.outbox.target, id));
+    return { runId, text: (row?.payload as { text?: string } | undefined)?.text ?? "" };
+  };
+
+  const graph = await ask("show my portfolio", "g1");
+  expect(graph.text).toMatch(
+    /^Current snapshot\.\n\nWallet on Ethereum Sepolia testnet: 1 ETH \(~\$2,000 at \$2,000\)/,
+  );
+  const link = graph.text.match(/Graph: (\S+)/)?.[1] ?? "";
+  expect(link.startsWith("https://app.test/wallet?t=")).toBe(true);
+  const token = new URL(link).searchParams.get("t") ?? "";
+  expect(readWalletViewToken(token)).toBe(graph.runId);
+  expect(readWalletViewToken(token, Date.now() + 25 * 60 * 60 * 1_000)).toBeNull();
+  expect(readWalletViewToken(`${token}x`)).toBeNull();
+
+  const text = await ask("show my portfolio in text", "g2");
+  expect(text.text).not.toContain("Graph:");
+  expect(wantsTextOnly("mi portafolio en texto")).toBe(true);
+  expect(wantsTextOnly("portfolio without a chart")).toBe(true);
+  expect(wantsTextOnly("show my portfolio")).toBe(false);
 });

@@ -1,3 +1,4 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { tables } from "@custodia/db";
 import { publicAppOrigin } from "@custodia/ens/paths";
 import { NotImplementedError } from "@custodia/schema";
@@ -55,7 +56,66 @@ const replyTarget = (input: unknown): ChannelReply | null => {
 };
 
 /** Plain-text stand-in for what web chat renders from the event stream (streamed prose, wallet card). */
-export type RunSummary = { text: string; holdings: string | null };
+export type RunSummary = { text: string; holdings: string | null; snapshot: WalletView | null };
+
+/** What /wallet renders for a chat user: the run's portfolio snapshot priced by its market context. */
+export type WalletView = {
+  network: string;
+  wallet: string;
+  eth: string;
+  usdc: string;
+  weth?: string;
+  scope?: string;
+  block?: string;
+  priceUsd?: number;
+  hourly?: Array<{ ts: number; close: number }>;
+};
+
+const WALLET_VIEW_TTL_MS = 24 * 60 * 60 * 1_000;
+const WALLET_VIEW_TAG_BYTES = 16;
+
+const walletViewTag = (body: string): string => {
+  const secret = process.env.SESSION_SECRET?.trim();
+  if (!secret) throw new NotImplementedError("SESSION_SECRET (wallet view links)");
+  return createHmac("sha256", secret)
+    .update("wallet-view|")
+    .update(body)
+    .digest()
+    .subarray(0, WALLET_VIEW_TAG_BYTES)
+    .toString("base64url");
+};
+
+/** Signed, expiring link to a run's wallet view; holding it is the only authorization the page needs. */
+export const createWalletViewToken = (runId: string, now = Date.now()): string => {
+  const body = Buffer.from(JSON.stringify({ r: runId, x: now + WALLET_VIEW_TTL_MS })).toString(
+    "base64url",
+  );
+  return `${body}.${walletViewTag(body)}`;
+};
+
+/** The run a wallet view link points at, or null for a forged or expired link. */
+export const readWalletViewToken = (token: string, now = Date.now()): string | null => {
+  const [body, tag, extra] = token.split(".");
+  if (!body || !tag || extra !== undefined) return null;
+  const expected = Buffer.from(walletViewTag(body));
+  const provided = Buffer.from(tag);
+  if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) return null;
+  try {
+    const { r, x } = JSON.parse(Buffer.from(body, "base64url").toString()) as {
+      r?: unknown;
+      x?: unknown;
+    };
+    return typeof r === "string" && typeof x === "number" && x > now ? r : null;
+  } catch {
+    return null;
+  }
+};
+
+/** "in text", "as text", "sin gráfico" … — the user asked for words, not the graph page. */
+export const wantsTextOnly = (message: string): boolean =>
+  /\b(in|as|plain|only|solo|en)\s+text[o]?\b|\b(no|without|sin)\s+(?:an?\s+|the\s+|una?\s+|el\s+)?(graph|chart|gr[aá]fic[ao]s?)/i.test(
+    message,
+  );
 
 const fmt = (value: number, digits: number) =>
   value.toLocaleString("en-US", { maximumFractionDigits: digits });
@@ -68,8 +128,17 @@ export const summarizeRunEvents = (
   events: Array<{ type: string; payload: unknown }>,
 ): RunSummary => {
   let text = "";
-  let portfolio: { eth?: string; usdc?: string; weth?: string; chain?: string } | null = null;
+  let portfolio: {
+    eth?: string;
+    usdc?: string;
+    weth?: string;
+    chain?: string;
+    owner?: string;
+    block?: string;
+    scope?: string;
+  } | null = null;
   let priceUsd: number | null = null;
+  let hourly: Array<{ ts: number; close: number }> | undefined;
   for (const event of events) {
     const payload = event.payload as {
       delta?: string;
@@ -81,6 +150,7 @@ export const summarizeRunEvents = (
     if (payload.name === "read_portfolio") portfolio = payload.output;
     if (payload.name === "get_market_context" && typeof payload.output.priceUsd === "number") {
       priceUsd = payload.output.priceUsd;
+      if (Array.isArray(payload.output.hourly)) hourly = payload.output.hourly;
     }
   }
   let holdings: string | null = null;
@@ -94,7 +164,20 @@ export const summarizeRunEvents = (
         : `${fmt(eth, 4)} ETH`;
     holdings = `Wallet on ${portfolio.chain ?? "Sepolia"}: ${ethPart}, ${fmt(usdc, 2)} USDC, ${fmt(weth, 4)} WETH. Testnet balances, no real value.`;
   }
-  return { text: text.trim(), holdings };
+  const snapshot: WalletView | null = portfolio
+    ? {
+        network: portfolio.chain ?? "Ethereum Sepolia testnet",
+        wallet: portfolio.owner ?? "",
+        eth: portfolio.eth ?? "0",
+        usdc: portfolio.usdc ?? "0",
+        weth: portfolio.weth,
+        scope: portfolio.scope,
+        block: portfolio.block,
+        priceUsd: priceUsd ?? undefined,
+        hourly,
+      }
+    : null;
+  return { text: text.trim(), holdings, snapshot };
 };
 
 /**
@@ -104,12 +187,14 @@ export const summarizeRunEvents = (
 export const channelReplyText = (
   run: { status: string; output: unknown },
   origin = publicAppOrigin(),
-  summary: RunSummary = { text: "", holdings: null },
+  summary: RunSummary = { text: "", holdings: null, snapshot: null },
+  graphUrl: string | null = null,
 ): string => {
   if (run.status !== "done") return "The agent could not complete that request. Please retry.";
   const output = run.output as { rationale?: string; taskId?: string | null } | null;
   const parts = [output?.rationale?.trim() || summary.text || "Done."];
   if (summary.holdings) parts.push(summary.holdings);
+  if (graphUrl) parts.push(`Graph: ${graphUrl}`);
   if (output?.taskId) {
     const link = `${origin}/task/${encodeURIComponent(output.taskId)}`;
     parts.push(`Review and sign the boundary on the web: ${link}`);
@@ -123,7 +208,21 @@ export async function queueChannelReply(db: AnyDb, runId: string): Promise<void>
   const target = run ? replyTarget(run.input) : null;
   if (!run || !target) return;
   const summary = summarizeRunEvents(await listEvents(db, runId));
-  await queueChannelMessage(db, target, channelReplyText(run, publicAppOrigin(), summary));
+  const lastUser = [
+    ...((run.input as { messages?: Array<{ role: string; content: string }> }).messages ?? []),
+  ]
+    .reverse()
+    .find((m) => m.role === "user");
+  // A wallet snapshot gets the graph page unless the user asked for text.
+  const graphUrl =
+    summary.snapshot && !wantsTextOnly(lastUser?.content ?? "")
+      ? `${publicAppOrigin()}/wallet?t=${createWalletViewToken(runId)}`
+      : null;
+  await queueChannelMessage(
+    db,
+    target,
+    channelReplyText(run, publicAppOrigin(), summary, graphUrl),
+  );
 }
 
 /** Queue text for the channel a run came from; no-op for web runs. */
