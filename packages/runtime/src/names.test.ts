@@ -49,3 +49,18 @@ it("recognises plain greetings only", () => {
   for (const n of ["hi, sell 1 eth", "what is eth doing", "show my portfolio"])
     expect(isGreeting(n)).toBe(false);
 });
+
+it("a generated wallet-xxxxxxxx label can be replaced by a real claim", async () => {
+  const { createTestDb, tables } = await import("@custodia/db");
+  const { claimUserLabel, getStoredUserLabel } = await import("./users.js");
+  const ctx = await createTestDb();
+  const wallet = "0x9e15a220cc2cfcfa3381c5488434291eb65eaa78" as const;
+  await ctx.db.insert(tables.users).values({ wallet, ensLabel: "wallet-9e15a220" });
+  await claimUserLabel(ctx.db as never, wallet, "rob");
+  expect(await getStoredUserLabel(ctx.db as never, wallet)).toBe("rob");
+  // A real name is not replaced.
+  await expect(claimUserLabel(ctx.db as never, wallet, "bob")).rejects.toThrow(
+    /already claimed rob/,
+  );
+  await ctx.close();
+});

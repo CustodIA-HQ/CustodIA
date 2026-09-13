@@ -3,7 +3,9 @@ import { getParentName, loadEnsConfig, lookupOwnerRecord, parseClaimLabel } from
 import { publicAppOrigin } from "@custodia/ens/paths";
 import { NotImplementedError } from "@custodia/schema";
 import type { AnyDb } from "./runs.js";
-import { getStoredUserLabel, isLabelTaken } from "./users.js";
+import { getStoredUserLabel, isAutoLabel, isLabelTaken } from "./users.js";
+
+export { isAutoLabel };
 
 /** "is alice available?", "check alice.custodia.eth", "claim alice", "my name" … */
 export type NameCommand =
@@ -146,10 +148,6 @@ export const readClaimToken = (token: string, now = Date.now()): ClaimTicket | n
 
 export const claimUrl = (wallet: `0x${string}`, label: string): string =>
   `${publicAppOrigin()}/claim?t=${createClaimToken(wallet, label)}`;
-
-/** Auto-generated fallback labels look like wallet-9e15a220; a real identity is anything else. */
-export const isAutoLabel = (label: string | null): boolean =>
-  !label || /^wallet-[0-9a-f]{8}$/.test(label);
 
 /** True until the wallet has claimed a name of its own. */
 export const needsName = async (db: AnyDb, wallet: `0x${string}`): Promise<boolean> =>
