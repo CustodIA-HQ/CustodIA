@@ -1,7 +1,8 @@
 import type { MarketContext, UISpec } from "@custodia/schema";
 import type { ReactNode } from "react";
-import { formatFiat, formatPercent } from "../format-number";
+import { formatFiat, formatPercent, formatTokenAmount } from "../format-number";
 import GuardChart from "../guard/guard-chart";
+import { BoundaryTile } from "./boundary-tile";
 import { DashboardChartCard } from "./dashboard-chart-card";
 import { HealthMeter } from "./health-meter";
 import { PayoffChart } from "./payoff-chart";

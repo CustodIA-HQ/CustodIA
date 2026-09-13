@@ -202,30 +202,17 @@ export default function MandateRenderer({
   onSigned,
   onRevoke,
 }: MandateRendererProps) {
-  // ── 1. Validate the spec — hard error surfaces in the UI, not a console.warn ──
-  let spec: UISpec;
-  try {
-    spec = validateSpec(rawSpec);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return (
-      <div
-        role="alert"
-        style={{
-          background: "rgba(255, 107, 107, 0.08)",
-          border: "1px solid rgba(255, 107, 107, 0.35)",
-          borderRadius: 10,
-          padding: "1rem 1.25rem",
-          color: "var(--custodia-danger)",
-          fontSize: 13,
-          fontFamily: "monospace",
-        }}
-      >
-        <strong>UISpec validation failed — proposal rejected.</strong>
-        <pre style={{ marginTop: "0.5rem", whiteSpace: "pre-wrap", opacity: 0.8 }}>{msg}</pre>
-      </div>
-    );
-  }
+  // ── 1. Validate the spec ─────────────────────────────────────────────────────
+  // Hooks must run unconditionally, so validation is memoised and the error UI
+  // is rendered *after* every hook has been called.
+  const parsed = useMemo(() => {
+    try {
+      return { spec: validateSpec(rawSpec), error: null as string | null };
+    } catch (err) {
+      return { spec: null, error: err instanceof Error ? err.message : String(err) };
+    }
+  }, [rawSpec]);
+  const spec: UISpec = parsed.spec ?? EMPTY_SPEC;
 
   // ── 2. Local state ───────────────────────────────────────────────────────────
   const [form, dispatch] = useReducer(formReducer, spec, initFormState);

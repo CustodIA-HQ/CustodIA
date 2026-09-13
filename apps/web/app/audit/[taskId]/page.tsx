@@ -92,7 +92,7 @@ export default async function AuditPage({ params }: { params: Promise<{ taskId: 
                 <div className="audit-page__card">
                   {event.type === "event" && (
                     <div>
-                      <div className="audit-page__label">Stage: {event.data.stage} | Type: {event.data.type}</div>
+                      <div className="audit-page__label">Stage: {String(event.data.stage ?? "")} | Type: {String(event.data.type ?? "")}</div>
                       <pre className="audit-page__pre">
                         {JSON.stringify(event.data.payload, null, 2)}
                       </pre>
@@ -103,7 +103,7 @@ export default async function AuditPage({ params }: { params: Promise<{ taskId: 
                     <div>
                       <div>
                         <span className="audit-page__label">Hash</span>
-                        <span className="audit-page__value--accent">{event.data.hash}</span>
+                        <span className="audit-page__value--accent">{String(event.data.hash ?? "")}</span>
                       </div>
                       <details>
                         <summary className="audit-page__summary">View Proposal Body</summary>
@@ -118,19 +118,19 @@ export default async function AuditPage({ params }: { params: Promise<{ taskId: 
                     <div>
                       <div>
                         <span className="audit-page__label">Tx ID</span>
-                        <span className="audit-page__value--accent">{event.data.txId}</span>
+                        <span className="audit-page__value--accent">{String(event.data.txId ?? "")}</span>
                       </div>
-                      {event.data.amount && (
+                      {Boolean(event.data.amount) && (
                         <div>
                           <span className="audit-page__label">Amount</span>
-                          <span className="audit-page__value">{event.data.amount} <span className="audit-page__value--accent">HBAR</span></span>
+                          <span className="audit-page__value">{String(event.data.amount ?? "")} <span className="audit-page__value--accent">HBAR</span></span>
                         </div>
                       )}
                       <div>
                         <span className="audit-page__label">Network</span>
-                        <span className="audit-page__value">{event.data.network}</span>
+                        <span className="audit-page__value">{String(event.data.network ?? "")}</span>
                       </div>
-                      {event.data.payload && (
+                      {Boolean(event.data.payload) && (
                         <details>
                           <summary className="audit-page__summary">View Payload</summary>
                           <pre className="audit-page__pre">
