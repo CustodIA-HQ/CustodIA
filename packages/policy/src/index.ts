@@ -292,3 +292,14 @@ export function evaluatePolicyLimits(mandate: Mandate, snapshot: MarketSnapshot)
       `trade limit: $${tradeConstraint?.value?.toLocaleString("en-US") ?? "unconstrained"}.`,
   );
 }
+
+export {
+  PAPER_DEFAULTS,
+  type PaperObservation,
+  type PaperSettings,
+  type PaperState,
+  paperEquity,
+  paperFill,
+  replayPaper,
+  seedPaper,
+} from "./paper.js";
