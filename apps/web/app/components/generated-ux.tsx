@@ -1,6 +1,8 @@
 import type { MarketContext, UISpec } from "@custodia/schema";
+import type { ReactNode } from "react";
 import { formatFiat, formatPercent } from "../format-number";
 import GuardChart from "../guard/guard-chart";
+import { DashboardChartCard } from "./dashboard-chart-card";
 import { HealthMeter } from "./health-meter";
 import { PayoffChart } from "./payoff-chart";
 
@@ -8,11 +10,15 @@ export function GeneratedUx({
   spec,
   market,
   hideChart = false,
+  dashboard = false,
 }: {
   spec: UISpec;
   market?: MarketContext | null;
   hideChart?: boolean;
+  dashboard?: boolean;
 }) {
+  const frame = (node: ReactNode) =>
+    dashboard ? <DashboardChartCard>{node}</DashboardChartCard> : node;
   const chart = spec.components.find((component) => component.type === "price_chart");
   const allocation = spec.components.find((component) => component.type === "allocation_selector");
   const drawdown = spec.components.find((component) => component.type === "range_slider");
@@ -43,19 +49,21 @@ export function GeneratedUx({
         </section>
       )}
 
-      {chart?.type === "price_chart" && market && !hideChart && (
-        <GuardChart market={market} range={chart.range} />
-      )}
+      {chart?.type === "price_chart" &&
+        market &&
+        !hideChart &&
+        frame(<GuardChart market={market} range={chart.range} />)}
 
-      {payoff?.type === "payoff_chart" && (
-        <PayoffChart
-          spotUsd={payoff.spotUsd}
-          strikeUsd={payoff.strikeUsd}
-          premiumUsd={payoff.premiumUsd}
-          points={payoff.points}
-          base={market?.base ?? "ETH"}
-        />
-      )}
+      {payoff?.type === "payoff_chart" &&
+        frame(
+          <PayoffChart
+            spotUsd={payoff.spotUsd}
+            strikeUsd={payoff.strikeUsd}
+            premiumUsd={payoff.premiumUsd}
+            points={payoff.points}
+            base={market?.base ?? "ETH"}
+          />,
+        )}
 
       {health?.type === "health_meter" && (
         <HealthMeter
