@@ -18,10 +18,14 @@ const LABEL = "([a-z0-9][a-z0-9-]{1,62}(?:\\.custodia\\.eth)?)";
 
 export const parseNameCommand = (message: string): NameCommand | null => {
   const t = message.trim().toLowerCase();
+  // "claim rob", "yes let's claim rob", "please register rob.custodia.eth" — short messages only,
+  // so a sentence that merely mentions claiming is not mistaken for a command.
   let m = t.match(
-    new RegExp(`^(?:claim|register|reclama|registra)\\s+(?:the\\s+name\\s+)?${LABEL}\\s*$`),
+    new RegExp(`\\b(?:claim|register|reclama|registra)\\s+(?:the\\s+name\\s+)?${LABEL}\\b`),
   );
-  if (m?.[1]) return { kind: "claim", label: m[1] };
+  if (m?.[1] && t.length <= 60 && !/^(my|the|a|an|it|that|this)$/.test(m[1])) {
+    return { kind: "claim", label: m[1] };
+  }
   m = t.match(
     new RegExp(
       `^(?:is|check|verify|está|esta)\\s+${LABEL}\\s+(?:available|free|taken|disponible|libre)\\??$`,
