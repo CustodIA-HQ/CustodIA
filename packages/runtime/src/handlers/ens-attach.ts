@@ -8,6 +8,7 @@ import {
   ownerDirectoryPath,
 } from "@custodia/ens";
 import { sql } from "drizzle-orm";
+import { notifyOwner } from "../channels.js";
 import type { JobHandler } from "../registry.js";
 import { getStoredUserLabel } from "../users.js";
 
@@ -37,6 +38,11 @@ export const ensAttachHandler: JobHandler = async ({ db, job }) => {
       set: { ensLabel: sql`coalesce(${tables.users.ensLabel}, excluded.ens_label)` },
     });
   if (!attached.created || !attached.recordsTxId) return;
+  await notifyOwner(
+    db,
+    wallet,
+    `${attached.name} is now yours on Sepolia ENS. Directory: ${directoryUrl(ownerDirectoryPath(attached.name))}\nTx: https://sepolia.etherscan.io/tx/${attached.recordsTxId}`,
+  );
 
   await db.insert(tables.receipts).values({
     kind: "ens_tx",

@@ -15,6 +15,7 @@ import {
   resolveProposal,
 } from "../actions.js";
 import { queueChannelReply } from "../channels.js";
+import { checkName, claimUrl, describeMyName, parseNameCommand } from "../names.js";
 import { storeProposal } from "../proposals.js";
 import type { JobHandler } from "../registry.js";
 import { appendEvent, completeRun, failRun, type RunStage } from "../runs.js";
@@ -71,6 +72,32 @@ async function runChat(
       type: "tool",
       payload: { type: "tool", name: "classify_intent", output: { intent } },
     });
+    // Identity: "is alice available?", "claim alice", "my name" — handled without the model.
+    const nameCommand = parseNameCommand(lastUser?.content ?? "");
+    if (nameCommand) {
+      let rationale: string;
+      if (nameCommand.kind === "mine") {
+        rationale = await describeMyName(db, owner);
+      } else {
+        const check = await checkName(db, owner, nameCommand.label);
+        rationale = check.text;
+        if (nameCommand.kind === "claim" && check.ok && check.label && check.name) {
+          rationale = `${check.name} is available. Sign once with your wallet to claim it (link valid 15 minutes): ${claimUrl(owner, check.label)}`;
+        } else if (nameCommand.kind === "check" && check.ok) {
+          rationale += ` Say "claim ${check.label}" to take it.`;
+        }
+      }
+      await chain;
+      await completeRun(db, runId, {
+        proposalId: null,
+        proposalHash: null,
+        ensName: null,
+        taskId: null,
+        rationale,
+        receipts: [],
+      });
+      return true;
+    }
     // YES / NO answers the agent's open proposal (rebalance) before anything else.
     const answer = parseConfirmation(lastUser?.content ?? "");
     const open = answer ? await findOpenProposal(db, owner) : null;

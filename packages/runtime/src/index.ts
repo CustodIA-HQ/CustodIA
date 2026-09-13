@@ -8,6 +8,7 @@ export { executeHandler } from "./handlers/execute.js";
 export { monitorHandler } from "./handlers/monitor.js";
 export { notifyHandler } from "./handlers/notify.js";
 export * from "./jobs.js";
+export * from "./names.js";
 export * from "./proposals.js";
 export * from "./registry.js";
 export * from "./runs.js";
