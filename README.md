@@ -51,7 +51,7 @@ A chat-native agentic finance runtime where the agent proposes, the human signs 
 
 **ETHGlobal ETHOnline 2026** · Targeting prizes from **Hedera** (AI & Agentic Payments, x402), **The Graph** (AI Tooling / AI Use Case) and **ENS** (Best Use of ENSv2).
 
-- **Demo video** (≤ 3 min): _coming soon_
+- **Pitch video** (≤ 3 min): <https://drive.google.com/file/d/1ulxpN2dAO3fC4MsgamVVB4sMGh5a92xr/view?usp=drive_link>
 - **Live demo**: <https://rotation-motherboard-eastern-environmental.trycloudflare.com> (tunnel to the running stack; also runs locally, see [Quick Start](#quick-start))
 - **Live demo script**: [`docs/DEMO-SCRIPT.md`](docs/DEMO-SCRIPT.md)
 - **AI usage disclosure**: [`AI_USAGE.md`](AI_USAGE.md) · prompt log in [`docs/prompts/`](docs/prompts/)
