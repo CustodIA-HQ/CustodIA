@@ -73,8 +73,15 @@ export async function POST(request: Request) {
     return response;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not verify the signature";
-    const status =
-      error instanceof NotImplementedError ? 503 : error instanceof AuthError ? 401 : 400;
-    return NextResponse.json({ error: message }, { status });
+    if (error instanceof AuthError) return NextResponse.json({ error: message }, { status: 401 });
+    if (error instanceof NotImplementedError) {
+      return NextResponse.json({ error: message }, { status: 503 });
+    }
+    // Anything else is the challenge store (database) failing, not a bad request.
+    console.error(`[auth] verify failed: ${message}`);
+    return NextResponse.json(
+      { error: "Sign-in is temporarily unavailable. Try again in a moment." },
+      { status: 503 },
+    );
   }
 }
