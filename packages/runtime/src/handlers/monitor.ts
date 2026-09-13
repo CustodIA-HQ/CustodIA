@@ -122,7 +122,9 @@ export const decideAutonomy = (input: AutonomyInput): AutonomyDecision => {
   return nothing("inside the boundary, nothing to do");
 };
 
-export const targetFromProposal = (body: unknown): number | null => {
+export const targetFromProposal = (body: unknown, mandate?: Mandate): number | null => {
+  const signed = mandate?.constraints.find((c) => c.type === "custodia.target_eth_pct.1");
+  if (signed && signed.type === "custodia.target_eth_pct.1") return signed.value;
   const spec = (body as { uiSpec?: UISpec } | null)?.uiSpec;
   const allocation = spec?.components.find((c) => c.type === "allocation_selector");
   if (allocation?.type !== "allocation_selector") return null;
@@ -179,7 +181,7 @@ export const monitorHandler: JobHandler = async ({ db }) => {
       const proposal = await loadLatestProposal(db, task.id);
       const decision = decideAutonomy({
         mandate,
-        targetEthPct: proposal ? targetFromProposal(proposal.body) : null,
+        targetEthPct: targetFromProposal(proposal?.body ?? null, mandate),
         vault,
         priceUsd: market.priceUsd,
         highWaterUsd: task.highWaterUsd ? Number(task.highWaterUsd) : null,

@@ -1,7 +1,7 @@
 import "../../../env";
 
 import { createDb, tables } from "@custodia/db";
-import { loadLatestMandate, loadLatestProposal, loadTask } from "@custodia/runtime";
+import { loadLatestMandate, loadLatestProposal, loadRun, loadTask } from "@custodia/runtime";
 import { type Mandate, mandateDigest } from "@custodia/schema";
 import { readVault } from "@custodia/vault";
 import { desc, eq } from "drizzle-orm";
@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import { createPublicClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { sepolia } from "viem/chains";
+import { getAgentAddress } from "../../identity";
 import { sessionFrom } from "../../session";
 
 export const dynamic = "force-dynamic";
@@ -36,6 +37,13 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
   const mandateRow = await loadLatestMandate(db as never, id);
   const proposal = await loadLatestProposal(db as never, id);
   const receipts = await db.select().from(tables.receipts).where(eq(tables.receipts.taskId, id));
+  const run = proposal ? await loadRun(db as never, proposal.runId) : null;
+  let agentAddress: string | null = null;
+  try {
+    agentAddress = getAgentAddress();
+  } catch {
+    agentAddress = null;
+  }
   const actions = await db
     .select()
     .from(tables.actions)
@@ -83,6 +91,9 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
       : null,
     actions,
     signers: signerAddresses(),
+    // For signing a draft mandate on this page: the conversation the session must be bound to.
+    conversationId: run?.conversationId ?? null,
+    agent: agentAddress,
     mandateHash: mandateRow ? mandateDigest(mandateRow.typedData as Mandate) : null,
     mandate: mandateRow?.typedData ?? null,
     proposal: proposal ? { id: proposal.id, hash: proposal.hash, body: proposal.body } : null,

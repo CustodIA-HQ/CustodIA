@@ -55,12 +55,24 @@ export function SplashOrbit() {
         </filter>
       </defs>
 
-      <circle className="splash-orbit__disc" cx="100" cy="100" r="98" fill="url(#splash-orbit-disc)" />
+      <circle
+        className="splash-orbit__disc"
+        cx="100"
+        cy="100"
+        r="98"
+        fill="url(#splash-orbit-disc)"
+      />
 
       {/* Precessing ellipse with a data packet running along it */}
       <g className="splash-orbit__ellipse">
         <g transform="rotate(-35 100 100)">
-          <path d={ELLIPSE_PATH} fill="none" stroke="#22d3ee" strokeOpacity="0.35" strokeWidth="0.8" />
+          <path
+            d={ELLIPSE_PATH}
+            fill="none"
+            stroke="#22d3ee"
+            strokeOpacity="0.35"
+            strokeWidth="0.8"
+          />
           {!reducedMotion && (
             <circle r="2.2" fill="#22d3ee" filter="url(#splash-orbit-glow)">
               <animateMotion dur="3.2s" repeatCount="indefinite" path={ELLIPSE_PATH} />
@@ -71,7 +83,15 @@ export function SplashOrbit() {
 
       {/* Main orbit with hexagon nodes */}
       <g className="splash-orbit__ring">
-        <circle cx="100" cy="100" r={ORBIT_R} fill="none" stroke="url(#splash-orbit-grad)" strokeOpacity="0.7" strokeWidth="0.9" />
+        <circle
+          cx="100"
+          cy="100"
+          r={ORBIT_R}
+          fill="none"
+          stroke="url(#splash-orbit-grad)"
+          strokeOpacity="0.7"
+          strokeWidth="0.9"
+        />
         {NODES.map((node, index) => (
           <g key={index} transform={`translate(${node.x} ${node.y})`}>
             <path
@@ -105,7 +125,14 @@ export function SplashOrbit() {
 
       {/* Core */}
       <g className="splash-orbit__core" filter="url(#splash-orbit-glow)">
-        <circle cx="100" cy="100" r="29" fill="none" stroke="url(#splash-orbit-grad)" strokeWidth="3.6" />
+        <circle
+          cx="100"
+          cy="100"
+          r="29"
+          fill="none"
+          stroke="url(#splash-orbit-grad)"
+          strokeWidth="3.6"
+        />
         <text
           x="100"
           y="100"

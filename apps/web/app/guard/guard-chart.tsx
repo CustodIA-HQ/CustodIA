@@ -136,53 +136,53 @@ export default function GuardChart({
           onPointerLeave={scrub.handlers.onPointerLeave}
         >
           <title>{`${market.pair} ${range} hourly closes from The Graph`}</title>
-        <defs>
-          <linearGradient id="custodia-price-fill" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="var(--custodia-accent)" stopOpacity="0.28" />
-            <stop offset="100%" stopColor="var(--custodia-accent)" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        {[0, 0.5, 1].map((ratio) => {
-          const gridY = padding.top + ratio * innerHeight;
-          const gridValue = high - ratio * spread;
-          return (
-            <g key={ratio}>
+          <defs>
+            <linearGradient id="custodia-price-fill" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stopColor="var(--custodia-accent)" stopOpacity="0.28" />
+              <stop offset="100%" stopColor="var(--custodia-accent)" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          {[0, 0.5, 1].map((ratio) => {
+            const gridY = padding.top + ratio * innerHeight;
+            const gridValue = high - ratio * spread;
+            return (
+              <g key={ratio}>
+                <line
+                  x1={padding.left}
+                  x2={chartWidth - padding.right}
+                  y1={gridY}
+                  y2={gridY}
+                  className="guard-chart__grid"
+                />
+                <text x={padding.left} y={gridY - 5} className="guard-chart__axis">
+                  {formatPrice(gridValue, market.quote, axisMode(high, spread))}
+                </text>
+              </g>
+            );
+          })}
+          <polygon points={area} fill="url(#custodia-price-fill)" />
+          <polyline points={line} className="guard-chart__line" />
+          {floor && (
+            <g className="guard-chart__overlay" data-overlay="floor">
               <line
                 x1={padding.left}
                 x2={chartWidth - padding.right}
-                y1={gridY}
-                y2={gridY}
-                className="guard-chart__grid"
+                y1={y(floor.priceUsd)}
+                y2={y(floor.priceUsd)}
+                className="guard-chart__floor"
               />
-              <text x={padding.left} y={gridY - 5} className="guard-chart__axis">
-                {formatPrice(gridValue, market.quote, axisMode(high, spread))}
-              </text>
+              {!compact && (
+                <text
+                  x={chartWidth - padding.right}
+                  y={y(floor.priceUsd) - 6}
+                  className="guard-chart__overlay-label"
+                  textAnchor="end"
+                >
+                  {floor.label}
+                </text>
+              )}
             </g>
-          );
-        })}
-        <polygon points={area} fill="url(#custodia-price-fill)" />
-        <polyline points={line} className="guard-chart__line" />
-        {floor && (
-          <g className="guard-chart__overlay" data-overlay="floor">
-            <line
-              x1={padding.left}
-              x2={chartWidth - padding.right}
-              y1={y(floor.priceUsd)}
-              y2={y(floor.priceUsd)}
-              className="guard-chart__floor"
-            />
-            {!compact && (
-              <text
-                x={chartWidth - padding.right}
-                y={y(floor.priceUsd) - 6}
-                className="guard-chart__overlay-label"
-                textAnchor="end"
-              >
-                {floor.label}
-              </text>
-            )}
-          </g>
-        )}
+          )}
           {!compact && envelope && (
             <text
               x={envelope.x}

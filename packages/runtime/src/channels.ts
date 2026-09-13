@@ -5,7 +5,7 @@ import { ownerDirectoryPath, publicAppOrigin } from "@custodia/ens/paths";
 import { holdingsLine, NotImplementedError, wantsTextOnly } from "@custodia/schema";
 import { and, eq } from "drizzle-orm";
 import { enqueueJob } from "./jobs.js";
-import { CLAIM_NUDGE, needsName } from "./names.js";
+import { CLAIM_NUDGE, needsName, taskLinkUrl } from "./names.js";
 import { type AnyDb, listEvents, loadRun } from "./runs.js";
 import { getStoredUserLabel } from "./users.js";
 
@@ -185,6 +185,7 @@ export const channelReplyText = (
   origin = publicAppOrigin(),
   summary: RunSummary = { text: "", holdings: null, snapshot: null },
   graphUrl: string | null = null,
+  taskUrl: string | null = null,
 ): string => {
   if (run.status !== "done") return "The agent could not complete that request. Please retry.";
   const output = run.output as { rationale?: string; taskId?: string | null } | null;
@@ -192,7 +193,7 @@ export const channelReplyText = (
   if (summary.holdings) parts.push(summary.holdings);
   if (graphUrl) parts.push(`Graph: ${graphUrl}`);
   if (output?.taskId) {
-    const link = `${origin}/task/${encodeURIComponent(output.taskId)}`;
+    const link = taskUrl ?? `${origin}/task/${encodeURIComponent(output.taskId)}`;
     parts.push(`Review and sign the boundary on the web: ${link}`);
   }
   return parts.join("\n\n");
@@ -227,20 +228,18 @@ export async function queueChannelReply(db: AnyDb, runId: string): Promise<void>
     summary.snapshot && !wantsTextOnly(lastUser?.content ?? "")
       ? await walletViewUrl(db, run.ownerWallet as `0x${string}`, runId)
       : null;
-  let text = channelReplyText(run, publicAppOrigin(), summary, graphUrl);
+  const taskId = (run.output as { taskId?: string | null } | null)?.taskId ?? null;
+  // The task link carries a signed ticket: the chat already proved the wallet, so the page
+  // opens with a web session and the owner can sign the mandate right there.
+  const taskUrl = taskId ? taskLinkUrl(run.ownerWallet as `0x${string}`, taskId) : null;
+  let text = channelReplyText(run, publicAppOrigin(), summary, graphUrl, taskUrl);
   // A wallet answer is where the identity shows: nudge until a name is claimed.
   if (summary.snapshot && (await needsName(db, run.ownerWallet as `0x${string}`))) {
     text += `\n\n${CLAIM_NUDGE}`;
   }
-  const output = run.output as { taskId?: string | null } | null;
   const buttons: ChannelButton[] = [];
   if (graphUrl) buttons.push({ label: "Open graph", url: graphUrl });
-  if (output?.taskId) {
-    buttons.push({
-      label: "Review & sign",
-      url: `${publicAppOrigin()}/task/${encodeURIComponent(output.taskId)}`,
-    });
-  }
+  if (taskUrl) buttons.push({ label: "Review & sign", url: taskUrl });
   await queueChannelMessage(db, target, text, buttons);
 }
 

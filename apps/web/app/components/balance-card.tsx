@@ -34,7 +34,14 @@ function TokenGlyph({ symbol }: { symbol: "ETH" | "USDC" }) {
           d="M16 5.5 8.8 16.2 16 20.4l7.2-4.2L16 5.5Zm0 16.4-7.2-4.2L16 26.5l7.2-8.8-7.2 4.2Z"
         />
       ) : (
-        <text x="16" y="21" textAnchor="middle" fill="var(--custodia-accent-ink)" fontSize="13" fontWeight="700">
+        <text
+          x="16"
+          y="21"
+          textAnchor="middle"
+          fill="var(--custodia-accent-ink)"
+          fontSize="13"
+          fontWeight="700"
+        >
           $
         </text>
       )}

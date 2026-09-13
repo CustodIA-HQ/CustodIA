@@ -191,3 +191,45 @@ export const isDisconnect = (message: string): boolean =>
   /^(disconnect|unpair|log ?out|sign ?out|reset( this)?( chat)?|desconectar|cerrar sesi[oó]n)\b[!. ]*$/i.test(
     message.trim(),
   );
+
+// ── Task link: opens the task page with a web session for the paired wallet ──
+
+const TASK_LINK_TTL_MS = 24 * 60 * 60 * 1_000;
+
+/** Signed ticket {wallet, taskId}: a chat that already proved the wallet may open its task page. */
+export const createTaskLinkToken = (
+  wallet: `0x${string}`,
+  taskId: string,
+  now = Date.now(),
+): string => {
+  const body = Buffer.from(
+    JSON.stringify({ w: wallet, k: taskId, x: now + TASK_LINK_TTL_MS }),
+  ).toString("base64url");
+  return `${body}.${tag(`task|${body}`)}`;
+};
+
+export const readTaskLinkToken = (
+  token: string,
+  now = Date.now(),
+): { wallet: `0x${string}`; taskId: string } | null => {
+  const [body, sig, extra] = token.split(".");
+  if (!body || !sig || extra !== undefined) return null;
+  const expected = Buffer.from(tag(`task|${body}`));
+  const provided = Buffer.from(sig);
+  if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) return null;
+  try {
+    const { w, k, x } = JSON.parse(Buffer.from(body, "base64url").toString()) as {
+      w?: unknown;
+      k?: unknown;
+      x?: unknown;
+    };
+    if (typeof w !== "string" || typeof k !== "string" || typeof x !== "number" || x <= now)
+      return null;
+    return { wallet: w as `0x${string}`, taskId: k };
+  } catch {
+    return null;
+  }
+};
+
+export const taskLinkUrl = (wallet: `0x${string}`, taskId: string): string =>
+  `${publicAppOrigin()}/task/${encodeURIComponent(taskId)}?t=${createTaskLinkToken(wallet, taskId)}`;

@@ -5,7 +5,11 @@ function CaseRow({ hidden }: { hidden?: boolean }) {
   return (
     <div className="use-cases-marquee__group" aria-hidden={hidden || undefined}>
       {PRODUCT_CASES.map((item) => (
-        <UseCaseCard key={`${hidden ? "dup" : "src"}-${item.template}`} item={item} hidden={hidden} />
+        <UseCaseCard
+          key={`${hidden ? "dup" : "src"}-${item.template}`}
+          item={item}
+          hidden={hidden}
+        />
       ))}
     </div>
   );

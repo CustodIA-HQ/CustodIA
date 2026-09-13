@@ -1,4 +1,4 @@
-import { PRODUCT_CASES } from "../cases";
+import type { PRODUCT_CASES } from "../cases";
 
 type CaseItem = (typeof PRODUCT_CASES)[number];
 
@@ -12,7 +12,12 @@ function IconShield() {
         strokeWidth="1.6"
         strokeLinejoin="round"
       />
-      <path d="M12 8.2v7.2" stroke="var(--custodia-accent)" strokeWidth="1.4" strokeLinecap="round" />
+      <path
+        d="M12 8.2v7.2"
+        stroke="var(--custodia-accent)"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -21,7 +26,13 @@ function IconPortfolio() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <circle cx="12" cy="12" r="7.4" fill="none" stroke="currentColor" strokeWidth="1.6" />
-      <path d="M12 4.6V12l5.2 3.1" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <path
+        d="M12 4.6V12l5.2 3.1"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
       <circle cx="12" cy="12" r="1.2" fill="var(--custodia-accent)" />
     </svg>
   );
@@ -76,7 +87,13 @@ function IconFutures() {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <path d="M15.2 7.6h4.2v4.1" fill="none" stroke="var(--custodia-accent)" strokeWidth="1.4" strokeLinecap="round" />
+      <path
+        d="M15.2 7.6h4.2v4.1"
+        fill="none"
+        stroke="var(--custodia-accent)"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -84,8 +101,18 @@ function IconFutures() {
 function IconCompare() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M5 16.6h3.2V7.4H5zM10.4 16.6h3.2V10H10.4zM15.8 16.6H19V5.8h-3.2z" fill="none" stroke="currentColor" strokeWidth="1.6" />
-      <path d="M5 16.6h14" stroke="var(--custodia-accent)" strokeWidth="1.3" strokeLinecap="round" />
+      <path
+        d="M5 16.6h3.2V7.4H5zM10.4 16.6h3.2V10H10.4zM15.8 16.6H19V5.8h-3.2z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+      />
+      <path
+        d="M5 16.6h14"
+        stroke="var(--custodia-accent)"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }

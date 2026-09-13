@@ -26,7 +26,8 @@ const MAX_MANDATE_SECONDS = 30 * 24 * 60 * 60;
 // evidence a mandate may bind to is the server-side proposal it references.
 const MandateRequestSchema = z
   .object({
-    conversationId: z.string().uuid(),
+    // Web chats use a UUID; chat channels use "telegram:<id>" / "whatsapp:<number>".
+    conversationId: z.string().min(1).max(128),
     proposalId: z.string().uuid(),
     mandate: MandateSchema,
     signature: z.string().regex(/^0x[0-9a-f]+$/i, "expected a hex typed-data signature"),

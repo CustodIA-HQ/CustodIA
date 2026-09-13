@@ -195,6 +195,7 @@ const CONSTRAINT_TYPES = [
   "custodia.max_leverage.1",
   "custodia.min_health_factor.1",
   "custodia.require_stop.1",
+  "custodia.target_eth_pct.1",
 ] as const;
 
 export const ConstraintTypeSchema = z.enum(CONSTRAINT_TYPES);
@@ -213,6 +214,8 @@ export const ConstraintSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("custodia.max_leverage.1"), value: z.number() }),
   z.object({ type: z.literal("custodia.min_health_factor.1"), value: z.number() }),
   z.object({ type: z.literal("custodia.require_stop.1"), value: z.boolean() }),
+  // Signed ETH share (0–100) the agent keeps the vault near when rebalancing is allowed.
+  z.object({ type: z.literal("custodia.target_eth_pct.1"), value: z.number().min(0).max(100) }),
 ]);
 export type Constraint = z.infer<typeof ConstraintSchema>;
 

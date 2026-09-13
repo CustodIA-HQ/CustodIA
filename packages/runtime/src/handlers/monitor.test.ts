@@ -105,3 +105,17 @@ it("reads the signed target from the proposal's allocation selector", () => {
   expect(targetFromProposal({ uiSpec: { components: [] } })).toBeNull();
   expect(targetFromProposal(null)).toBeNull();
 });
+
+it("a signed target_eth_pct constraint overrides the proposal's default split", () => {
+  const body = {
+    uiSpec: {
+      intent: "configure_portfolio_guard",
+      rationale: "",
+      components: [{ type: "allocation_selector", assets: ["ETH", "USDC"], defaultPct: [100, 0] }],
+    },
+  };
+  expect(
+    targetFromProposal(body, mandate([{ type: "custodia.target_eth_pct.1", value: 50 }])),
+  ).toBe(50);
+  expect(targetFromProposal(body, mandate([]))).toBe(100);
+});
