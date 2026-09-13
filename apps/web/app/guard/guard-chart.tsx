@@ -107,63 +107,19 @@ export default function GuardChart({
           <span>{hovered ? formatWhen(hovered.ts) : coverage}</span>
         </div>
       </div>
-
-      {/* The plot is a slider over the hourly series: arrow keys move the reading; pointer/touch scrubs. */}
-      <div
-        className="guard-chart__plot"
-        ref={ref}
-        role="slider"
-        tabIndex={0}
-        aria-label={`${market.pair} ${range} hourly closes from The Graph`}
-        aria-valuemin={0}
-        aria-valuemax={points.length - 1}
-        aria-valuenow={scrub.index ?? points.length - 1}
-        aria-valuetext={`${formatPrice(headline?.close ?? market.priceUsd, market.quote)} at ${headline ? formatWhen(headline.ts) : "latest"}`}
-        onKeyDown={scrub.handlers.onKeyDown}
-      >
-        <svg
-          ref={scrub.svgRef}
-          className={
-            scrub.index === null ? "guard-chart__svg" : "guard-chart__svg guard-chart__svg--scrub"
-          }
-          aria-hidden="true"
-          viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-          width={chartWidth}
-          height={chartHeight}
-          onPointerDown={scrub.handlers.onPointerDown}
-          onPointerMove={scrub.handlers.onPointerMove}
-          onPointerUp={scrub.handlers.onPointerUp}
-          onPointerLeave={scrub.handlers.onPointerLeave}
-        >
-          <title>{`${market.pair} ${range} hourly closes from The Graph`}</title>
-          <defs>
-            <linearGradient id="custodia-price-fill" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor="#00d4b4" stopOpacity="0.28" />
-              <stop offset="100%" stopColor="#00d4b4" stopOpacity="0" />
-            </linearGradient>
-          </defs>
-          {[0, 0.5, 1].map((ratio) => {
-            const gridY = padding.top + ratio * innerHeight;
-            const gridValue = high - ratio * spread;
-            return (
-              <g key={ratio}>
-                <line
-                  x1={padding.left}
-                  x2={chartWidth - padding.right}
-                  y1={gridY}
-                  y2={gridY}
-                  className="guard-chart__grid"
-                />
-                <text x={padding.left} y={gridY - 5} className="guard-chart__axis">
-                  {formatPrice(gridValue, market.quote, axisMode(high, spread))}
-                </text>
-              </g>
-            );
-          })}
-          <polygon points={area} fill="url(#custodia-price-fill)" />
-          <polyline points={line} className="guard-chart__line" />
-          {floor && (
-            <g className="guard-chart__overlay" data-overlay="floor">
+      <svg className="guard-chart__svg" role="img" viewBox={`0 0 ${chartWidth} ${chartHeight}`}>
+        <title>{`${market.pair} ${range} hourly closes from The Graph`}</title>
+        <defs>
+          <linearGradient id="custodia-price-fill" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="var(--custodia-accent)" stopOpacity="0.28" />
+            <stop offset="100%" stopColor="var(--custodia-accent)" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        {[0, 0.5, 1].map((ratio) => {
+          const gridY = padding.top + ratio * innerHeight;
+          const gridValue = high - ratio * spread;
+          return (
+            <g key={ratio}>
               <line
                 x1={padding.left}
                 x2={chartWidth - padding.right}
@@ -287,8 +243,24 @@ export default function GuardChart({
         </ul>
       )}
       <div className="guard-chart__dates">
-        <span>{first ? formatWhen(first.ts) : "—"}</span>
-        <span>{last ? formatWhen(last.ts) : "—"}</span>
+        <span>
+          {first
+            ? new Date(first.ts * 1_000).toLocaleString([], {
+                month: "short",
+                day: "numeric",
+                hour: "numeric",
+              })
+            : "-"}
+        </span>
+        <span>
+          {last
+            ? new Date(last.ts * 1_000).toLocaleString([], {
+                month: "short",
+                day: "numeric",
+                hour: "numeric",
+              })
+            : "-"}
+        </span>
       </div>
     </figure>
   );

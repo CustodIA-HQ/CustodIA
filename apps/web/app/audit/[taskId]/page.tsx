@@ -17,7 +17,7 @@ export default async function AuditPage({ params }: { params: Promise<{ taskId: 
 
   if (!process.env.DATABASE_URL) {
     return (
-      <div className="flex h-screen items-center justify-center bg-zinc-950 text-zinc-400 font-mono text-sm">
+      <div className="audit-page audit-page--empty">
         [ERR] DATABASE_URL not configured
       </div>
     );
@@ -65,60 +65,49 @@ export default async function AuditPage({ params }: { params: Promise<{ taskId: 
   ].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-300 font-mono p-6 sm:p-10">
-      <div className="max-w-4xl mx-auto space-y-8">
-        <header className="border-b border-zinc-800 pb-6">
-          <h1 className="text-2xl font-semibold text-zinc-100">Audit Log: {taskId}</h1>
-          <div className="mt-2 text-sm text-zinc-500 flex flex-col sm:flex-row sm:gap-6">
-            <span>
-              Owner: <span className="text-zinc-300">{proposal.ownerWallet}</span>
-            </span>
-            <span>
-              Version: <span className="text-zinc-300">{proposal.version}</span>
-            </span>
+    <div className="audit-page">
+      <div className="audit-page__inner">
+        <header className="audit-page__header">
+          <h1 className="audit-page__title">Audit Log: {taskId}</h1>
+          <div className="audit-page__meta">
+            <span>Owner: <strong>{proposal.ownerWallet}</strong></span>
+            <span>Version: <strong>{proposal.version}</strong></span>
             <span>Created: {proposal.createdAt.toLocaleString()}</span>
           </div>
         </header>
 
-        <div className="space-y-6">
+        <div className="audit-page__list">
           {timeline.length === 0 ? (
-            <div className="text-zinc-600 text-sm">No events found for this task.</div>
+            <div className="audit-page__empty">No events found for this task.</div>
           ) : (
             timeline.map((event) => (
-              <div key={event.id} className="relative pl-6 sm:pl-8 border-l border-zinc-800">
-                <div className="absolute -left-1.5 top-1.5 h-3 w-3 rounded-full bg-zinc-800 border-2 border-zinc-950" />
+              <div key={event.id} className="audit-page__item">
+                <div className="audit-page__dot" />
 
-                <div className="flex flex-col sm:flex-row sm:items-baseline gap-2 mb-2">
-                  <span className="text-sm font-medium text-zinc-100">{event.title}</span>
-                  <span className="text-xs text-zinc-500">{event.timestamp.toLocaleString()}</span>
+                <div className="audit-page__item-head">
+                  <span className="audit-page__item-title">{event.title}</span>
+                  <span className="audit-page__item-time">{event.timestamp.toLocaleString()}</span>
                 </div>
 
-                <div className="bg-zinc-900 border border-zinc-800 rounded-md p-4 text-sm overflow-x-auto">
+                <div className="audit-page__card">
                   {event.type === "event" && (
                     <div>
-                      <div className="text-zinc-400 mb-2">
-                        Stage: {String(event.data.stage ?? "")} | Type:{" "}
-                        {String(event.data.type ?? "")}
-                      </div>
-                      <pre className="text-xs text-zinc-300 whitespace-pre-wrap font-mono">
+                      <div className="audit-page__label">Stage: {event.data.stage} | Type: {event.data.type}</div>
+                      <pre className="audit-page__pre">
                         {JSON.stringify(event.data.payload, null, 2)}
                       </pre>
                     </div>
                   )}
 
                   {event.type === "proposal" && (
-                    <div className="space-y-2">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-zinc-500 text-xs uppercase tracking-wider">Hash</span>
-                        <span className="text-amber-500 font-semibold break-all">
-                          {String(event.data.hash ?? "")}
-                        </span>
+                    <div>
+                      <div>
+                        <span className="audit-page__label">Hash</span>
+                        <span className="audit-page__value--accent">{event.data.hash}</span>
                       </div>
-                      <details className="mt-2">
-                        <summary className="cursor-pointer text-xs text-zinc-500 hover:text-zinc-300">
-                          View Proposal Body
-                        </summary>
-                        <pre className="mt-2 text-xs text-zinc-400 whitespace-pre-wrap">
+                      <details>
+                        <summary className="audit-page__summary">View Proposal Body</summary>
+                        <pre className="audit-page__pre">
                           {JSON.stringify(event.data.body, null, 2)}
                         </pre>
                       </details>
@@ -126,38 +115,25 @@ export default async function AuditPage({ params }: { params: Promise<{ taskId: 
                   )}
 
                   {event.type === "receipt" && (
-                    <div className="space-y-2">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-zinc-500 text-xs uppercase tracking-wider">
-                          Tx ID
-                        </span>
-                        <span className="text-emerald-400 font-semibold break-all">
-                          {String(event.data.txId ?? "")}
-                        </span>
+                    <div>
+                      <div>
+                        <span className="audit-page__label">Tx ID</span>
+                        <span className="audit-page__value--accent">{event.data.txId}</span>
                       </div>
-                      {Boolean(event.data.amount) && (
-                        <div className="flex gap-2 items-center">
-                          <span className="text-zinc-500 text-xs uppercase tracking-wider">
-                            Amount
-                          </span>
-                          <span className="text-zinc-200">
-                            {String(event.data.amount ?? "")}{" "}
-                            <span className="text-emerald-500 text-xs">HBAR</span>
-                          </span>
+                      {event.data.amount && (
+                        <div>
+                          <span className="audit-page__label">Amount</span>
+                          <span className="audit-page__value">{event.data.amount} <span className="audit-page__value--accent">HBAR</span></span>
                         </div>
                       )}
-                      <div className="flex gap-2 items-center">
-                        <span className="text-zinc-500 text-xs uppercase tracking-wider">
-                          Network
-                        </span>
-                        <span className="text-zinc-300">{String(event.data.network ?? "")}</span>
+                      <div>
+                        <span className="audit-page__label">Network</span>
+                        <span className="audit-page__value">{event.data.network}</span>
                       </div>
-                      {Boolean(event.data.payload) && (
-                        <details className="mt-2">
-                          <summary className="cursor-pointer text-xs text-zinc-500 hover:text-zinc-300">
-                            View Payload
-                          </summary>
-                          <pre className="mt-2 text-xs text-zinc-400 whitespace-pre-wrap">
+                      {event.data.payload && (
+                        <details>
+                          <summary className="audit-page__summary">View Payload</summary>
+                          <pre className="audit-page__pre">
                             {JSON.stringify(event.data.payload, null, 2)}
                           </pre>
                         </details>

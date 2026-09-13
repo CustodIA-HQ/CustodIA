@@ -8,7 +8,10 @@ import {
 } from "@custodia/schema";
 import { useEffect, useMemo, useState } from "react";
 import { PRODUCT_CASES } from "../cases";
+import { CasesLabInteractionProvider, CasesLabNav } from "../components/cases-lab-interaction";
+import { DashboardChartCard } from "../components/dashboard-chart-card";
 import { GeneratedUx } from "../components/generated-ux";
+import { SidebarCategory } from "../components/sidebar-category";
 import GuardChart from "../guard/guard-chart";
 import { buildChartOverlays, type ChartRange } from "./chart-overlays";
 import { demoSpec, type LabCase, labMarket } from "./samples";
@@ -149,220 +152,227 @@ export function UxPlayground({ initial = "position_protection" }: { initial?: La
     ],
   );
 
+  const caseTitle = LAB_CASES.find((item) => item.id === active)?.title ?? active;
+  const rangeLabel = range === "24h" ? "24 hours" : "7 days";
+  const volLabel = volPct === 3 ? "Quiet 3%" : volPct === 14 ? "Shock 14%" : `Base ${volPct}%`;
+  const envelopeLabel =
+    envelopeUsd === 400 ? "Tight $400" : envelopeUsd === 20_000 ? "Wide $20k" : "Base $2.5k";
+  const mixLabel = mix === "eth" ? "ETH-heavy" : mix === "usdc" ? "USDC-heavy" : "Balanced";
+
   return (
-    <div className="ux-lab">
-      <button
-        type="button"
-        className="ux-lab__toggle"
-        aria-expanded={panelOpen}
-        aria-controls="ux-lab-rail"
-        onClick={() => setPanelOpen((current) => !current)}
-      >
-        {panelOpen ? "Hide scenario controls" : "Adjust scenario"}
-        <span className="ux-lab__toggle-meta">
-          {LAB_CASES.find((item) => item.id === active)?.title ?? active} · {pair} · {range}
-        </span>
-      </button>
-      <aside
-        className={panelOpen ? "ux-lab__rail ux-lab__rail--open" : "ux-lab__rail"}
-        id="ux-lab-rail"
-      >
-        <p className="home-hero__note">
-          {live ? `Live Graph · ${liveMarkets.length} pairs` : "Sample · Graph unavailable"}
-        </p>
-        <h1>Generated UX</h1>
-        <p>
-          Pick a case, then slide the chart and fire operation triggers. Overlays use the same
-          numbers as the generated spec.
-        </p>
-        {!live && liveError && <p className="guard-page__muted">{liveError}</p>}
+    <CasesLabInteractionProvider>
+      <div className="ux-lab">
+        <aside className="ux-lab__rail">
+          <p className="home-hero__note">
+            {live ? `Live Graph · ${liveMarkets.length} pairs` : "Sample · Graph unavailable"}
+          </p>
+          <h1>Generated UX</h1>
+          <p>
+            Pick a case, then slide the chart and fire operation triggers. Overlays use the same
+            numbers as the generated spec.
+          </p>
+          {!live && liveError && <p className="guard-page__muted">{liveError}</p>}
 
-        <fieldset className="ux-lab__group">
-          <legend>Case</legend>
-          {LAB_CASES.map((item) => (
-            <button
-              key={item.id}
-              className={active === item.id ? "ux-lab__chip ux-lab__chip--on" : "ux-lab__chip"}
-              type="button"
-              title={item.prompt}
-              onClick={() => setCurrent(item.id)}
-            >
-              {item.title}
-            </button>
-          ))}
-        </fieldset>
+          <CasesLabNav>
+            <SidebarCategory legend="Case" value={caseTitle}>
+              {LAB_CASES.map((item) => (
+                <button
+                  key={item.id}
+                  className={
+                    active === item.id ? "ux-cat__option ux-cat__option--on" : "ux-cat__option"
+                  }
+                  type="button"
+                  title={item.prompt}
+                  onClick={() => setCurrent(item.id)}
+                >
+                  {item.title}
+                </button>
+              ))}
+            </SidebarCategory>
 
-        <fieldset className="ux-lab__group">
-          <legend>Base</legend>
-          {MARKET_ASSETS.map((value) => (
-            <button
-              key={value}
-              className={baseAsset === value ? "ux-lab__chip ux-lab__chip--on" : "ux-lab__chip"}
-              type="button"
-              onClick={() => setPairParts(value, quoteAsset)}
-            >
-              {value}
-            </button>
-          ))}
-        </fieldset>
+            <SidebarCategory legend="Base" value={baseAsset}>
+              {MARKET_ASSETS.map((value) => (
+                <button
+                  key={value}
+                  className={
+                    baseAsset === value ? "ux-cat__option ux-cat__option--on" : "ux-cat__option"
+                  }
+                  type="button"
+                  onClick={() => setPairParts(value, quoteAsset)}
+                >
+                  {value}
+                </button>
+              ))}
+            </SidebarCategory>
 
-        <fieldset className="ux-lab__group">
-          <legend>Quote</legend>
-          {MARKET_ASSETS.map((value) => {
-            const next = `${baseAsset}/${value}` as MarketPair;
-            const available =
-              value !== baseAsset && (!live || liveMarkets.some((row) => row.pair === next));
-            return (
-              <button
-                key={value}
-                className={quoteAsset === value ? "ux-lab__chip ux-lab__chip--on" : "ux-lab__chip"}
-                type="button"
-                disabled={!available}
-                onClick={() => setPairParts(baseAsset, value)}
-              >
-                {value}
-              </button>
-            );
-          })}
-        </fieldset>
+            <SidebarCategory legend="Quote" value={quoteAsset}>
+              {MARKET_ASSETS.map((value) => {
+                const next = `${baseAsset}/${value}` as MarketPair;
+                const available =
+                  value !== baseAsset && (!live || liveMarkets.some((row) => row.pair === next));
+                return (
+                  <button
+                    key={value}
+                    className={
+                      quoteAsset === value ? "ux-cat__option ux-cat__option--on" : "ux-cat__option"
+                    }
+                    type="button"
+                    disabled={!available}
+                    onClick={() => setPairParts(baseAsset, value)}
+                  >
+                    {value}
+                  </button>
+                );
+              })}
+            </SidebarCategory>
 
-        <fieldset className="ux-lab__group">
-          <legend>Chart range</legend>
-          {(
-            [
-              ["24h", "24 hours"],
-              ["7d", "7 days"],
-            ] as const
-          ).map(([value, label]) => (
-            <button
-              key={value}
-              className={range === value ? "ux-lab__chip ux-lab__chip--on" : "ux-lab__chip"}
-              type="button"
-              onClick={() => setRange(value)}
-            >
-              {label}
-            </button>
-          ))}
-        </fieldset>
+            <SidebarCategory legend="Chart range" value={rangeLabel}>
+              {(
+                [
+                  ["24h", "24 hours"],
+                  ["7d", "7 days"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  className={
+                    range === value ? "ux-cat__option ux-cat__option--on" : "ux-cat__option"
+                  }
+                  type="button"
+                  onClick={() => setRange(value)}
+                >
+                  {label}
+                </button>
+              ))}
+            </SidebarCategory>
 
-        {!live && (
-          <fieldset className="ux-lab__group">
-            <legend>Volatility</legend>
-            {(
-              [
-                [3, "Quiet"],
-                [6, "Base"],
-                [14, "Shock"],
-              ] as const
-            ).map(([value, label]) => (
-              <button
-                key={value}
-                className={volPct === value ? "ux-lab__chip ux-lab__chip--on" : "ux-lab__chip"}
-                type="button"
-                onClick={() => setVolPct(value)}
-              >
-                {label} {value}%
-              </button>
-            ))}
-          </fieldset>
-        )}
+            {!live && (
+              <SidebarCategory legend="Volatility" value={volLabel}>
+                {(
+                  [
+                    [3, "Quiet"],
+                    [6, "Base"],
+                    [14, "Shock"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    key={value}
+                    className={
+                      volPct === value ? "ux-cat__option ux-cat__option--on" : "ux-cat__option"
+                    }
+                    type="button"
+                    onClick={() => setVolPct(value)}
+                  >
+                    {label} {value}%
+                  </button>
+                ))}
+              </SidebarCategory>
+            )}
 
-        <fieldset className="ux-lab__group">
-          <legend>Max trade / envelope</legend>
-          {(
-            [
-              [400, "Tight $400"],
-              [2500, "Base $2.5k"],
-              [20_000, "Wide $20k"],
-            ] as const
-          ).map(([value, label]) => (
-            <button
-              key={value}
-              className={envelopeUsd === value ? "ux-lab__chip ux-lab__chip--on" : "ux-lab__chip"}
-              type="button"
-              onClick={() => setEnvelopeUsd(value)}
-            >
-              {label}
-            </button>
-          ))}
-        </fieldset>
+            <SidebarCategory legend="Max trade / envelope" value={envelopeLabel}>
+              {(
+                [
+                  [400, "Tight $400"],
+                  [2500, "Base $2.5k"],
+                  [20_000, "Wide $20k"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  className={
+                    envelopeUsd === value ? "ux-cat__option ux-cat__option--on" : "ux-cat__option"
+                  }
+                  type="button"
+                  onClick={() => setEnvelopeUsd(value)}
+                >
+                  {label}
+                </button>
+              ))}
+            </SidebarCategory>
 
-        <fieldset className="ux-lab__group">
-          <legend>Spot size</legend>
-          {([200, 500, 50_000] as const).map((value) => (
-            <button
-              key={value}
-              className={notionalUsd === value ? "ux-lab__chip ux-lab__chip--on" : "ux-lab__chip"}
-              type="button"
-              onClick={() => {
-                setNotionalUsd(value);
-                setCurrent(value > envelopeUsd ? "needs_human" : "spot_execution");
-              }}
-            >
-              ${value.toLocaleString("en-US")}
-            </button>
-          ))}
-        </fieldset>
+            <SidebarCategory legend="Spot size" value={`$${notionalUsd.toLocaleString("en-US")}`}>
+              {([200, 500, 50_000] as const).map((value) => (
+                <button
+                  key={value}
+                  className={
+                    notionalUsd === value ? "ux-cat__option ux-cat__option--on" : "ux-cat__option"
+                  }
+                  type="button"
+                  onClick={() => {
+                    setNotionalUsd(value);
+                    setCurrent(value > envelopeUsd ? "needs_human" : "spot_execution");
+                  }}
+                >
+                  ${value.toLocaleString("en-US")}
+                </button>
+              ))}
+            </SidebarCategory>
 
-        <fieldset className="ux-lab__group">
-          <legend>Deductible / floor</legend>
-          {([5, 15, 25] as const).map((value) => (
-            <button
-              key={value}
-              className={deductiblePct === value ? "ux-lab__chip ux-lab__chip--on" : "ux-lab__chip"}
-              type="button"
-              onClick={() => {
-                setDeductiblePct(value);
-                setCurrent("position_protection");
-              }}
-            >
-              {value}%
-            </button>
-          ))}
-        </fieldset>
+            <SidebarCategory legend="Deductible / floor" value={`${deductiblePct}%`}>
+              {([5, 15, 25] as const).map((value) => (
+                <button
+                  key={value}
+                  className={
+                    deductiblePct === value ? "ux-cat__option ux-cat__option--on" : "ux-cat__option"
+                  }
+                  type="button"
+                  onClick={() => {
+                    setDeductiblePct(value);
+                    setCurrent("position_protection");
+                  }}
+                >
+                  {value}%
+                </button>
+              ))}
+            </SidebarCategory>
 
-        <fieldset className="ux-lab__group">
-          <legend>Holdings mix</legend>
-          {(
-            [
-              ["eth", "ETH-heavy"],
-              ["balanced", "Balanced"],
-              ["usdc", "USDC-heavy"],
-            ] as const
-          ).map(([value, label]) => (
-            <button
-              key={value}
-              className={mix === value ? "ux-lab__chip ux-lab__chip--on" : "ux-lab__chip"}
-              type="button"
-              onClick={() => setMix(value)}
-            >
-              {label}
-            </button>
-          ))}
-        </fieldset>
-      </aside>
+            <SidebarCategory legend="Holdings mix" value={mixLabel}>
+              {(
+                [
+                  ["eth", "ETH-heavy"],
+                  ["balanced", "Balanced"],
+                  ["usdc", "USDC-heavy"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  className={mix === value ? "ux-cat__option ux-cat__option--on" : "ux-cat__option"}
+                  type="button"
+                  onClick={() => setMix(value)}
+                >
+                  {label}
+                </button>
+              ))}
+            </SidebarCategory>
+          </CasesLabNav>
+        </aside>
 
-      <section className="ux-lab__stage" aria-live="polite">
-        <p className="home-hero__note">
-          alice.custodia.eth/demo/{active.replaceAll("_", "-")}
-          {active === "research" ? " · ephemeral" : ""}
-          {live ? " · live Graph" : " · sample"}
-        </p>
-        <GuardChart
-          market={market}
-          range={range}
-          overlays={overlays}
-          source={live && liveMarket ? "live" : "sample"}
-        />
-        {active === "research" || !spec ? (
-          <>
-            <h2>Research</h2>
-            <p>No mandate and no ENS record. The chart above is the research surface.</p>
-          </>
-        ) : (
-          <GeneratedUx spec={spec} market={market} hideChart />
-        )}
-      </section>
-    </div>
+        <section className="ux-lab__stage" aria-live="polite">
+          <p className="home-hero__note">
+            alice.custodia.eth/demo/{active.replaceAll("_", "-")}
+            {active === "research" ? " · ephemeral" : ""}
+            {live ? " · live Graph" : " · sample"}
+          </p>
+          <div className="ux-lab__dash">
+            <DashboardChartCard>
+              <GuardChart
+                market={market}
+                range={range}
+                overlays={overlays}
+                source={live && liveMarket ? "live" : "sample"}
+              />
+            </DashboardChartCard>
+            {active === "research" || !spec ? (
+              <div className="ux-lab__research">
+                <h2>Research</h2>
+                <p>No mandate and no ENS record. The chart above is the research surface.</p>
+              </div>
+            ) : (
+              <GeneratedUx spec={spec} market={market} hideChart dashboard />
+            )}
+          </div>
+        </section>
+      </div>
+    </CasesLabInteractionProvider>
   );
 }
