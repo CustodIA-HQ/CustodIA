@@ -240,3 +240,52 @@ it("sends a holdings answer with a graph link, or text only when asked", async (
   expect(wantsTextOnly("portfolio without a chart")).toBe(true);
   expect(wantsTextOnly("show my portfolio")).toBe(false);
 });
+
+it("alerts the owner's Telegram once when WhatsApp cannot deliver (24 h window)", async () => {
+  await bindChannel(ctx.db, {
+    channel: "whatsapp",
+    externalId: "34600111222",
+    ownerWallet: "0xdual",
+  });
+  await bindChannel(ctx.db, { channel: "telegram", externalId: "4242", ownerWallet: "0xdual" });
+  await ctx.db.insert(tables.outbox).values({
+    channel: "whatsapp",
+    target: "34600111222",
+    payload: { text: "Agent proposal — rebalance. Reply YES or NO." },
+  });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string) =>
+      String(url).includes("graph.facebook.com")
+        ? Response.json(
+            { error: { message: "Re-engagement message", code: 131047 } },
+            { status: 400 },
+          )
+        : Response.json({ ok: true }),
+    ),
+  );
+  vi.stubEnv("WHATSAPP_ACCESS_TOKEN", "wa-token");
+  vi.stubEnv("WHATSAPP_PHONE_NUMBER_ID", "123");
+  vi.stubEnv("TELEGRAM_BOT_TOKEN", "t0ken");
+  vi.stubEnv("APP_URL", "https://app.test");
+  const registry = new HandlerRegistry().register("notify.drain", notifyHandler);
+  await ctx.db.insert(tables.jobs).values({ kind: "notify.drain", payload: {} });
+  await tick(ctx.db, registry, "w1"); // WhatsApp fails → Telegram alert queued
+
+  const [alert] = await ctx.db.select().from(tables.outbox).where(eq(tables.outbox.target, "4242"));
+  expect((alert?.payload as { text?: string } | undefined)?.text).toMatch(
+    /^You have a pending CustodIA message that WhatsApp could not deliver .*https:\/\/app\.test\/chat\n\nAgent proposal — rebalance/,
+  );
+  const [wa] = await ctx.db
+    .select()
+    .from(tables.outbox)
+    .where(eq(tables.outbox.target, "34600111222"));
+  expect(wa).toMatchObject({ status: "pending", attempts: 1, payload: { alerted: true } });
+
+  // The retry of the same WhatsApp row must not alert again.
+  await ctx.db.insert(tables.jobs).values({ kind: "notify.drain", payload: {} });
+  await tick(ctx.db, registry, "w1");
+  expect(
+    await ctx.db.select().from(tables.outbox).where(eq(tables.outbox.target, "4242")),
+  ).toHaveLength(1);
+});
