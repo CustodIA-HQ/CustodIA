@@ -13,6 +13,9 @@ This file is the index. Do not copy numbers or trap lists here — open the file
 | Hedera / Graph / ENS constants and traps | `QUICKREF.md` (read the traps table before any of those three) |
 | Task lifecycle and who signs what | `docs/FLOW.md` |
 | Eligible prizes | `TRACKS.md` |
+| Topology, key isolation, persistence tables | `ARCHITECTURE.md` |
+| AI assistance disclosure and prompt log | `AI_USAGE.md`, `docs/prompts/` |
+| Feasibility and per-sponsor research | `docs/research/` |
 | ENS parent / PermissionedResolver one-time setup | `packages/ens/README.md` |
 | Colors and type in use | `apps/web/app/globals.css` (`:root`) |
 
