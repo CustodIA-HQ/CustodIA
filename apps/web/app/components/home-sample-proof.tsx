@@ -1,12 +1,8 @@
 import type { MarketContext, UISpec } from "@custodia/schema";
 import { formatFiat, formatPercent } from "../format-number";
-import GuardChart from "../guard/guard-chart";
-import { PayoffChart } from "./payoff-chart";
 
 export function HomeSampleProof({ spec, market }: { spec: UISpec; market: MarketContext }) {
-  const chart = spec.components.find((component) => component.type === "price_chart");
   const knobs = spec.components.find((component) => component.type === "protection_knobs");
-  const payoff = spec.components.find((component) => component.type === "payoff_chart");
   const protection = spec.components.find(
     (component) => component.type === "protection_simulation",
   );
@@ -15,19 +11,6 @@ export function HomeSampleProof({ spec, market }: { spec: UISpec; market: Market
   return (
     <section className="home-sample" aria-label="Sample generated protection interface">
       <p className="home-sample__label">Sample · alice.custodia.eth/demo/position-protection</p>
-
-      <div className="home-sample__charts">
-        {chart?.type === "price_chart" && <GuardChart market={market} range={chart.range} />}
-        {payoff?.type === "payoff_chart" && (
-          <PayoffChart
-            spotUsd={payoff.spotUsd}
-            strikeUsd={payoff.strikeUsd}
-            premiumUsd={payoff.premiumUsd}
-            points={payoff.points}
-            base={market.base ?? "ETH"}
-          />
-        )}
-      </div>
 
       <div className="home-sample__context">
         {knobs?.type === "protection_knobs" && (
