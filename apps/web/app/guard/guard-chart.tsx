@@ -104,11 +104,38 @@ export default function GuardChart({
         </div>
         <div className="guard-chart__latest" aria-live="polite">
           <strong>{formatPrice(headline?.close ?? market.priceUsd, market.quote)}</strong>
-          <span>{hovered ? formatWhen(hovered.ts) : coverage}</span>
+          <span suppressHydrationWarning>{hovered ? formatWhen(hovered.ts) : coverage}</span>
         </div>
       </div>
-      <svg className="guard-chart__svg" role="img" viewBox={`0 0 ${chartWidth} ${chartHeight}`}>
-        <title>{`${market.pair} ${range} hourly closes from The Graph`}</title>
+      {/* The plot is a slider over the hourly series: arrow keys move the reading; pointer/touch scrubs. */}
+      <div
+        className="guard-chart__plot"
+        ref={ref}
+        role="slider"
+        suppressHydrationWarning
+        tabIndex={0}
+        aria-label={`${market.pair} ${range} hourly closes from The Graph`}
+        aria-valuemin={0}
+        aria-valuemax={points.length - 1}
+        aria-valuenow={scrub.index ?? points.length - 1}
+        aria-valuetext={`${formatPrice(headline?.close ?? market.priceUsd, market.quote)} at ${headline ? formatWhen(headline.ts) : "latest"}`}
+        onKeyDown={scrub.handlers.onKeyDown}
+      >
+        <svg
+          ref={scrub.svgRef}
+          className={
+            scrub.index === null ? "guard-chart__svg" : "guard-chart__svg guard-chart__svg--scrub"
+          }
+          aria-hidden="true"
+          viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+          width={chartWidth}
+          height={chartHeight}
+          onPointerDown={scrub.handlers.onPointerDown}
+          onPointerMove={scrub.handlers.onPointerMove}
+          onPointerUp={scrub.handlers.onPointerUp}
+          onPointerLeave={scrub.handlers.onPointerLeave}
+        >
+          <title>{`${market.pair} ${range} hourly closes from The Graph`}</title>
         <defs>
           <linearGradient id="custodia-price-fill" x1="0" x2="0" y1="0" y2="1">
             <stop offset="0%" stopColor="var(--custodia-accent)" stopOpacity="0.28" />
@@ -123,22 +150,39 @@ export default function GuardChart({
               <line
                 x1={padding.left}
                 x2={chartWidth - padding.right}
-                y1={y(floor.priceUsd)}
-                y2={y(floor.priceUsd)}
-                className="guard-chart__floor"
+                y1={gridY}
+                y2={gridY}
+                className="guard-chart__grid"
               />
-              {!compact && (
-                <text
-                  x={chartWidth - padding.right}
-                  y={y(floor.priceUsd) - 6}
-                  className="guard-chart__overlay-label"
-                  textAnchor="end"
-                >
-                  {floor.label}
-                </text>
-              )}
+              <text x={padding.left} y={gridY - 5} className="guard-chart__axis">
+                {formatPrice(gridValue, market.quote, axisMode(high, spread))}
+              </text>
             </g>
-          )}
+          );
+        })}
+        <polygon points={area} fill="url(#custodia-price-fill)" />
+        <polyline points={line} className="guard-chart__line" />
+        {floor && (
+          <g className="guard-chart__overlay" data-overlay="floor">
+            <line
+              x1={padding.left}
+              x2={chartWidth - padding.right}
+              y1={y(floor.priceUsd)}
+              y2={y(floor.priceUsd)}
+              className="guard-chart__floor"
+            />
+            {!compact && (
+              <text
+                x={chartWidth - padding.right}
+                y={y(floor.priceUsd) - 6}
+                className="guard-chart__overlay-label"
+                textAnchor="end"
+              >
+                {floor.label}
+              </text>
+            )}
+          </g>
+        )}
           {!compact && envelope && (
             <text
               x={envelope.x}
@@ -243,7 +287,7 @@ export default function GuardChart({
         </ul>
       )}
       <div className="guard-chart__dates">
-        <span>
+        <span suppressHydrationWarning>
           {first
             ? new Date(first.ts * 1_000).toLocaleString([], {
                 month: "short",
@@ -252,7 +296,7 @@ export default function GuardChart({
               })
             : "-"}
         </span>
-        <span>
+        <span suppressHydrationWarning>
           {last
             ? new Date(last.ts * 1_000).toLocaleString([], {
                 month: "short",
