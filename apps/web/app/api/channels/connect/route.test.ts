@@ -7,6 +7,15 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@custodia/db", () => ({ createDb: mocks.createDb }));
+// Greetings come from the model in production; tests use the fixed text offline.
+vi.mock("@custodia/agent", async (orig) => {
+  const mod = await orig<typeof import("@custodia/agent")>();
+  return {
+    ...mod,
+    generateWelcome: async (o: { paired: Parameters<typeof mod.staticWelcome>[0] }) =>
+      mod.staticWelcome(o.paired),
+  };
+});
 vi.mock("@custodia/runtime", () => ({
   bindChannel: mocks.bindChannel,
   queueChannelMessage: mocks.queueChannelMessage,

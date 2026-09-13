@@ -1,6 +1,7 @@
 import "../../env";
 
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { generateWelcome } from "@custodia/agent";
 import { createDb } from "@custodia/db";
 import { publicAppOrigin } from "@custodia/ens/paths";
 import {
@@ -10,7 +11,6 @@ import {
   findChannelBinding,
   queueChannelMessage,
 } from "@custodia/runtime";
-import { welcomePaired, welcomeWithVerify } from "@custodia/schema";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { connectUrl, readPairingCode } from "../channels/pairing";
@@ -104,7 +104,10 @@ export async function POST(request: Request) {
       if (message.type !== "text" || !message.text) continue;
       const target = { channel: "whatsapp" as const, chatId: message.from };
       const verifyText = () =>
-        welcomeWithVerify(connectUrl("whatsapp", message.from, publicAppOrigin()));
+        generateWelcome({
+          surface: "whatsapp",
+          paired: { verifyLink: connectUrl("whatsapp", message.from, publicAppOrigin()) },
+        });
       const text = message.text.body.trim();
 
       const connect = text.match(/^connect\s+(\S+)$/i);
@@ -114,7 +117,7 @@ export async function POST(request: Request) {
           await queueChannelMessage(
             getDb(),
             target,
-            `That pairing code is invalid or expired. ${verifyText()}`,
+            `That pairing code is invalid or expired. ${await verifyText()}`,
           );
           continue;
         }
@@ -123,13 +126,17 @@ export async function POST(request: Request) {
           externalId: message.from,
           ownerWallet: wallet,
         });
-        await queueChannelMessage(getDb(), target, welcomePaired(wallet));
+        await queueChannelMessage(
+          getDb(),
+          target,
+          await generateWelcome({ surface: "whatsapp", paired: { wallet } }),
+        );
         continue;
       }
 
       const ownerWallet = await findChannelBinding(getDb(), "whatsapp", message.from);
       if (!ownerWallet) {
-        await queueChannelMessage(getDb(), target, verifyText());
+        await queueChannelMessage(getDb(), target, await verifyText());
         continue;
       }
       if (text.length > MAX_MESSAGE_LENGTH) {

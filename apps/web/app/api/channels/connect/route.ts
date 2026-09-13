@@ -1,8 +1,8 @@
 import "../../../env";
 
+import { generateWelcome } from "@custodia/agent";
 import { createDb } from "@custodia/db";
 import { bindChannel, queueChannelMessage } from "@custodia/runtime";
-import { welcomePaired } from "@custodia/schema";
 import { NextResponse } from "next/server";
 import { verifyMessage } from "viem";
 import { z } from "zod";
@@ -76,7 +76,7 @@ export async function POST(request: Request) {
     await queueChannelMessage(
       getDb(),
       { channel: claim.channel, chatId: claim.externalId },
-      welcomePaired(address),
+      await generateWelcome({ surface: claim.channel, paired: { wallet: address } }),
     );
   } catch (error) {
     console.error(`[channels/connect] ${error instanceof Error ? error.name : "Error"}`);

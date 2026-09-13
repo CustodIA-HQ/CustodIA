@@ -1,10 +1,10 @@
 import "../../env";
 
 import { timingSafeEqual } from "node:crypto";
+import { generateWelcome } from "@custodia/agent";
 import { createDb } from "@custodia/db";
 import { publicAppOrigin } from "@custodia/ens/paths";
 import { bindChannel, createRun, enqueueJob, findChannelBinding } from "@custodia/runtime";
-import { welcomePaired, welcomeWithVerify } from "@custodia/schema";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { connectUrl, readPairingCode } from "../channels/pairing";
@@ -18,7 +18,7 @@ const UpdateSchema = z.object({
   message: z
     .object({
       chat: z.object({ id: z.number().int(), type: z.string() }),
-      from: z.object({ id: z.number().int() }).optional(),
+      from: z.object({ id: z.number().int(), language_code: z.string().optional() }).optional(),
       text: z.string().optional(),
     })
     .optional(),
@@ -68,20 +68,30 @@ export async function POST(request: Request) {
   const text = message.text.trim();
 
   try {
-    const verify = () =>
-      reply(chatId, welcomeWithVerify(connectUrl("telegram", externalId, publicAppOrigin())));
+    const language = message.from.language_code?.slice(0, 2);
+    const verify = async () =>
+      reply(
+        chatId,
+        await generateWelcome({
+          surface: "telegram",
+          language,
+          paired: { verifyLink: connectUrl("telegram", externalId, publicAppOrigin()) },
+        }),
+      );
+    const paired = async (wallet: string) =>
+      reply(chatId, await generateWelcome({ surface: "telegram", language, paired: { wallet } }));
 
     // A /start code from a signed web session still pairs directly.
     const start = text.match(/^\/start(?:\s+(\S+))?$/);
     const startWallet = start?.[1] ? readPairingCode("telegram", start[1]) : null;
     if (startWallet) {
       await bindChannel(getDb(), { channel: "telegram", externalId, ownerWallet: startWallet });
-      return reply(chatId, welcomePaired(startWallet));
+      return paired(startWallet);
     }
 
     const ownerWallet = await findChannelBinding(getDb(), "telegram", externalId);
     if (!ownerWallet) return verify();
-    if (start) return reply(chatId, welcomePaired(ownerWallet));
+    if (start) return paired(ownerWallet);
     if (text.length > MAX_MESSAGE_LENGTH) {
       return reply(chatId, `Messages are limited to ${MAX_MESSAGE_LENGTH} characters.`);
     }

@@ -322,6 +322,26 @@ function MessageCard({
 
 export default function ChatSection({ fullPage = false }: { fullPage?: boolean } = {}) {
   const [messages, setMessages] = useState<Message[]>([welcomeMessage]);
+  // A model-written greeting replaces the fixed one; the fixed text stays if that fails.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/welcome")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((body: { text?: string } | null) => {
+        if (cancelled || !body?.text) return;
+        setMessages((current) =>
+          current.map((message) =>
+            message.id === "welcome"
+              ? { ...message, content: body.text ?? message.content }
+              : message,
+          ),
+        );
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [errorTitle, setErrorTitle] = useState("The agent could not complete that request.");

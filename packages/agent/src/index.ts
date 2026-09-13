@@ -305,4 +305,5 @@ export { composeNeedsHuman, composeUISpec } from "./compose.js";
 export { hcsAuditHandler, submitAuditLog } from "./hcs-audit.js";
 export { readPortfolio } from "./portfolio.js";
 export { classifyIntent } from "./router.js";
+export { generateWelcome, staticWelcome, type WelcomeOptions } from "./welcome.js";
 export { type PaidFetchResult, PaymentError, paidFetch } from "./x402.js";
