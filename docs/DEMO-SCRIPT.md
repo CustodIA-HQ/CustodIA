@@ -13,15 +13,16 @@ portfolio, research) — vary the small talk, keep the key words.
 | # | Where | Type / do | Expect |
 |---|---|---|---|
 | 1 | Server | stack running, tunnel up, `getWebhookInfo` shows the tunnel URL | — |
-| 2 | WhatsApp | `hi` | a greeting; opens WhatsApp's 24 h window |
-| 3 | Telegram (@CustodiaHQbot) | `hi` | greeting (backup channel; both must be paired to `0x9E15…Aa78`) |
+| 2 | WhatsApp | `hi` | welcome + your identity line (or the claim nudge); opens WhatsApp's 24 h window |
+| 3 | Telegram (@CustodiaHQbot) | `hi` | same (backup channel; both must be paired to `0x9E15…Aa78`) |
 | 4 | WhatsApp | `is rob available?` → `claim rob` → open link, sign | "rob.custodia.eth is reserved…", then within ~1 min "…is now yours on Sepolia ENS … Tx: …" |
 | 5 | WhatsApp | `Set up a guard for my ETH and allow rebalancing` | "Working on it…" then a review link. Open it, keep **Allow rebalance ON**, set the ETH/USDC split to **50 / 50**, sign the mandate |
 | 6 | wait | ~1 min | "…is live on ENS. Chart and status: <link>" — **keep this link** |
 | 7 | Laptop | open the task page → **Deploy vault** (1 wallet tx) → **Deposit** `0.02` ETH | panel shows `0.02 ETH · 0 USDC`, 0 actions |
 | 8 | WhatsApp | `show me my portfolio` | balances + `Graph:` link (fresh snapshot for the wallet page) |
 | 9 | Laptop tabs | task page (vault panel) · `…/rob.custodia.eth` · sepolia.etherscan.io | — |
-| 10 | wait | 60 s before going live | vault cooldown clear |
+| 10 | WhatsApp | `hi` (again, just before going live) | *"…Your identity is rob.custodia.eth, minted on Sepolia ENS. Profile: …"* — this is your opening frame |
+| 11 | wait | 60 s before going live | vault cooldown clear |
 
 Within a minute of step 7 the agent may already message you: *"Agent proposal — rebalance: ETH is 100% of the vault, target 50%. Reply YES…"* — that's fine. **Do not answer it** (keep it as the optional closer). If you'd rather not have it on screen, deposit only after step 8 and go live right away.
 
@@ -29,18 +30,25 @@ Within a minute of step 7 the agent may already message you: *"Agent proposal �
 
 ## Live — 80 seconds
 
-### 0:00 — the hook
-
-**Say:** "This is CustodIA. My agent lives in WhatsApp. Yesterday I signed a boundary — what it may trade, how much, until when. Watch what happens when I ask it to act."
+### 0:00 — who I am
 
 **Type (WhatsApp):**
+> `hi`
+
+**Bot (~3 s):** a short welcome, then *Your identity is rob.custodia.eth, minted on Sepolia ENS. Profile: https://…/rob.custodia.eth*
+
+**Say:** "This is CustodIA. My agent lives in WhatsApp, and it knows who I am on-chain: rob.custodia.eth, an ENS name minted on Sepolia. Yesterday I signed a boundary under that name — what it may trade, how much, until when. Watch what happens when I ask it to act."
+
+### 0:10 — the hook
+
+**Type:**
 > `Sell 0.005 ETH for USDC`
 
 **Bot (instant):** *Checking your order against the boundary and submitting it: ETH → USDC, 0.005 ETH. You'll get the result with the transaction link.*
 
 **Say:** "No wallet pop-up. It didn't ask me to sign — I already signed the boundary it works inside. That swap is on its way to Sepolia right now."
 
-### 0:12 — grounded in real data
+### 0:20 — grounded in real data
 
 **Type:**
 > `Show me my portfolio`
@@ -49,19 +57,19 @@ Within a minute of step 7 the agent may already message you: *"Agent proposal �
 
 **Say:** "Every answer comes from live data — The Graph for prices, the chain for balances. And notice the link."
 
-### 0:22 — the graph, under my ENS name
+### 0:28 — the graph, under my ENS name
 
 **Tap the Graph link.** (Wallet page: value, ETH/USDC split, 7-day chart.)
 
-**Say:** "rob.custodia.eth is my identity. This page is a subpath of it, every task is a subname of it. ENS isn't decoration here — it's the namespace the agent works in."
+**Say:** "Same name the bot greeted me with. This page is a subpath of it, every task is a subname of it. ENS isn't decoration here — it's the namespace the agent works in."
 
-### 0:35 — the proof
+### 0:38 — the proof
 
 **Laptop, tab `rob.custodia.eth`.** Scroll to *On-chain identity*.
 
 **Say:** "Here's the proof. Owner, the agent's scoped key, the resolver, the transaction that attached it — these are ENS records on Sepolia, not rows in our database. Anyone can verify who's allowed to act for me."
 
-### 0:45 — the receipt
+### 0:48 — the receipt
 
 **Back to the phone.** The message has landed:
 *Done: swapped 0.005 ETH → 140.18 USDC. Vault now: 0.015 ETH · 140.18 USDC. Tx: https://sepolia.etherscan.io/tx/0x…*
@@ -70,7 +78,7 @@ Within a minute of step 7 the agent may already message you: *"Agent proposal �
 
 **Say:** "Real swap, real chain. The funds sit in a vault contract only I can withdraw from. The contract itself checked the asset, the size, the cooldown, the expiry, and that the output came back to the vault. Our servers couldn't have bypassed that even if they wanted to."
 
-### 0:60 — the refusal moment
+### 0:62 — the refusal moment
 
 **Type:**
 > `Sell 5 ETH, all of it`
@@ -79,7 +87,7 @@ Within a minute of step 7 the agent may already message you: *"Agent proposal �
 
 **Say:** "Same agent, same chat, bigger number — hard no. Not 'won't': *can't*. The policy engine refused it, and if it hadn't, the contract would have reverted it."
 
-### 0:72 — close
+### 0:74 — close
 
 **Laptop, task page, vault panel.** Point at the action list (one *confirmed* with tx, one *refused* with reason) and the **Revoke** button.
 
@@ -98,11 +106,12 @@ Within a minute of step 7 the agent may already message you: *"Agent proposal �
 
 | If… | Then… |
 |---|---|
-| "Done" hasn't arrived by 0:45 | Show the vault panel instead: the action is *submitted* with a tx link — open that. Say "two confirmations on Sepolia take about half a minute". |
+| "Done" hasn't arrived by 0:48 | Show the vault panel instead: the action is *submitted* with a tx link — open that. Say "two confirmations on Sepolia take about half a minute". |
 | WhatsApp is silent | Same script in Telegram; the bot and wording are identical. |
 | The refusal says "the vault holds 0.015 ETH, less than the 5 ETH" | Still a refusal — say "it won't even sell what isn't there". (Balance is checked before the cap.) |
 | Someone asks why 0.005 ETH became 140 USDC | "Sepolia's test pool prices ETH near $28k; the limits are sized from the real reference price." |
 | The graph page shows an old timestamp | It's the last agent read; "show me my portfolio" refreshes it. |
+| `hi` answers with the claim nudge instead of your name | The mint hasn't confirmed (prep step 4) — wait for "…is now yours" or skip the identity line and start at 0:10. |
 
 ## Don't
 
