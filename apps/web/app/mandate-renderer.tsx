@@ -138,7 +138,7 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
         fontWeight: 700,
         letterSpacing: "0.1em",
         textTransform: "uppercase",
-        color: "rgba(226,240,255,0.45)",
+        color: "var(--custodia-soft)",
         marginBottom: "0.4rem",
       }}
     >
@@ -152,13 +152,13 @@ function ValueBadge({ children }: { children: React.ReactNode }) {
     <span
       style={{
         display: "inline-block",
-        background: "rgba(0,212,180,0.12)",
-        border: "1px solid rgba(0,212,180,0.28)",
+        background: "var(--custodia-accent-dim)",
+        border: "1px solid var(--custodia-accent-line)",
         borderRadius: 6,
         padding: "2px 10px",
         fontSize: 13,
         fontWeight: 700,
-        color: "#00d4b4",
+        color: "var(--custodia-accent)",
         minWidth: 54,
         textAlign: "center",
       }}
@@ -210,11 +210,11 @@ export default function MandateRenderer({
       <div
         role="alert"
         style={{
-          background: "rgba(255,60,60,0.08)",
-          border: "1px solid rgba(255,60,60,0.35)",
+          background: "rgba(255, 107, 107, 0.08)",
+          border: "1px solid rgba(255, 107, 107, 0.35)",
           borderRadius: 10,
           padding: "1rem 1.25rem",
-          color: "#ff6b6b",
+          color: "var(--custodia-danger)",
           fontSize: 13,
           fontFamily: "monospace",
         }}
@@ -317,7 +317,7 @@ export default function MandateRenderer({
       aria-labelledby="mandate-renderer-title"
       style={{
         background: "rgba(255,255,255,0.03)",
-        border: "1px solid rgba(0,212,180,0.18)",
+        border: "1px solid var(--custodia-accent-line)",
         borderRadius: 14,
         padding: "1.5rem",
         display: "flex",
@@ -333,7 +333,7 @@ export default function MandateRenderer({
             fontWeight: 700,
             letterSpacing: "0.18em",
             textTransform: "uppercase",
-            color: "#00d4b4",
+            color: "var(--custodia-accent)",
             margin: "0 0 0.3rem",
           }}
         >
@@ -341,11 +341,11 @@ export default function MandateRenderer({
         </p>
         <h2
           id="mandate-renderer-title"
-          style={{ fontSize: 16, fontWeight: 700, color: "#e2f0ff", margin: 0 }}
+          style={{ fontSize: 16, fontWeight: 700, color: "var(--custodia-text)", margin: 0 }}
         >
           {ensName}
         </h2>
-        <p style={{ fontSize: 12, color: "rgba(226,240,255,0.35)", margin: "0.25rem 0 0" }}>
+        <p style={{ fontSize: 12, color: "var(--custodia-soft)", margin: "0.25rem 0 0" }}>
           {spec.rationale}
         </p>
       </div>
@@ -390,7 +390,7 @@ export default function MandateRenderer({
               onChange={(e) =>
                 dispatch({ type: "SET_ETH_PCT", value: Number(e.target.value) })
               }
-              style={{ width: "100%", accentColor: "#00d4b4" }}
+              style={{ width: "100%", accentColor: "var(--custodia-accent)" }}
               aria-label="ETH allocation percentage"
             />
             <div
@@ -398,7 +398,7 @@ export default function MandateRenderer({
                 display: "flex",
                 justifyContent: "space-between",
                 fontSize: 10,
-                color: "rgba(226,240,255,0.3)",
+                color: "var(--custodia-soft)",
                 marginTop: "0.2rem",
               }}
             >
@@ -432,7 +432,7 @@ export default function MandateRenderer({
               onChange={(e) =>
                 dispatch({ type: "SET_DRAWDOWN", value: Number(e.target.value) })
               }
-              style={{ width: "100%", accentColor: "#00d4b4" }}
+              style={{ width: "100%", accentColor: "var(--custodia-accent)" }}
               aria-label="Maximum drawdown percentage trigger"
             />
             <div
@@ -440,7 +440,7 @@ export default function MandateRenderer({
                 display: "flex",
                 justifyContent: "space-between",
                 fontSize: 10,
-                color: "rgba(226,240,255,0.3)",
+                color: "var(--custodia-soft)",
                 marginTop: "0.2rem",
               }}
             >
@@ -474,7 +474,7 @@ export default function MandateRenderer({
               onChange={(e) =>
                 dispatch({ type: "SET_TRADE_USD", value: Number(e.target.value) })
               }
-              style={{ width: "100%", accentColor: "#00d4b4" }}
+              style={{ width: "100%", accentColor: "var(--custodia-accent)" }}
               aria-label="Maximum trade size in USD"
             />
             <div
@@ -482,7 +482,7 @@ export default function MandateRenderer({
                 display: "flex",
                 justifyContent: "space-between",
                 fontSize: 10,
-                color: "rgba(226,240,255,0.3)",
+                color: "var(--custodia-soft)",
                 marginTop: "0.2rem",
               }}
             >
@@ -499,8 +499,8 @@ export default function MandateRenderer({
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              background: "rgba(0,212,180,0.05)",
-              border: "1px solid rgba(0,212,180,0.14)",
+              background: "var(--custodia-accent-muted)",
+              border: "1px solid var(--custodia-accent-line)",
               borderRadius: 8,
               padding: "0.75rem 1rem",
               gap: "1rem",
@@ -508,7 +508,7 @@ export default function MandateRenderer({
           >
             <div>
               <FieldLabel>Autonomous Rebalance Permission</FieldLabel>
-              <p style={{ fontSize: 11, color: "rgba(226,240,255,0.35)", margin: 0 }}>
+              <p style={{ fontSize: 11, color: "var(--custodia-soft)", margin: 0 }}>
                 {rebalance.consequence}
               </p>
             </div>
@@ -539,8 +539,8 @@ export default function MandateRenderer({
                   inset: 0,
                   borderRadius: 22,
                   background: form.allowRebalance
-                    ? "#00d4b4"
-                    : "rgba(226,240,255,0.12)",
+                    ? "var(--custodia-accent)"
+                    : "var(--custodia-line)",
                   transition: "background 0.2s",
                   cursor: isDisabled ? "not-allowed" : "pointer",
                 }}
@@ -553,7 +553,7 @@ export default function MandateRenderer({
                   width: 16,
                   height: 16,
                   borderRadius: "50%",
-                  background: "#fff",
+                  background: "var(--custodia-text)",
                   transition: "left 0.2s",
                   pointerEvents: "none",
                 }}
@@ -570,14 +570,14 @@ export default function MandateRenderer({
           borderRadius: 8,
           padding: "0.75rem 1rem",
           fontSize: 12,
-          color: "rgba(226,240,255,0.5)",
+          color: "var(--custodia-muted)",
           fontFamily: "monospace",
           lineHeight: 1.7,
         }}
       >
         <span
           style={{
-            color: "rgba(226,240,255,0.25)",
+            color: "var(--custodia-soft)",
             display: "block",
             marginBottom: "0.3rem",
           }}
@@ -586,13 +586,13 @@ export default function MandateRenderer({
         </span>
         {buildConstraints(form).map((c) => (
           <div key={c.type}>
-            <span style={{ color: "#00d4b4" }}>{c.type}</span>:{" "}
+            <span style={{ color: "var(--custodia-accent)" }}>{c.type}</span>:{" "}
             {"value" in c ? String(c.value) : c.assets.join(", ")}
           </div>
         ))}
         <div style={{ marginTop: "0.4rem" }}>
-          <span style={{ color: "rgba(226,240,255,0.25)" }}>constraintsHash: </span>
-          <span style={{ color: "rgba(226,240,255,0.4)", fontSize: 11 }}>
+          <span style={{ color: "var(--custodia-soft)" }}>constraintsHash: </span>
+          <span style={{ color: "var(--custodia-muted)", fontSize: 11 }}>
             {constraintsHash(buildConstraints(form)).slice(0, 20)}…
           </span>
         </div>
@@ -603,12 +603,12 @@ export default function MandateRenderer({
         <div
           role="alert"
           style={{
-            background: "rgba(255,60,60,0.08)",
-            border: "1px solid rgba(255,60,60,0.28)",
+            background: "rgba(255, 107, 107, 0.08)",
+            border: "1px solid rgba(255, 107, 107, 0.28)",
             borderRadius: 8,
             padding: "0.6rem 1rem",
             fontSize: 12,
-            color: "#ff6b6b",
+            color: "var(--custodia-danger)",
           }}
         >
           {errorMsg}
@@ -620,27 +620,27 @@ export default function MandateRenderer({
         <div
           role="status"
           style={{
-            background: "rgba(0,212,180,0.07)",
-            border: "1px solid rgba(0,212,180,0.3)",
+            background: "var(--custodia-accent-muted)",
+            border: "1px solid var(--custodia-accent-line)",
             borderRadius: 8,
             padding: "0.75rem 1rem",
             fontSize: 12,
-            color: "rgba(226,240,255,0.7)",
+            color: "var(--custodia-muted)",
             fontFamily: "monospace",
             lineHeight: 1.7,
           }}
         >
-          <div style={{ color: "#00d4b4", fontWeight: 700, marginBottom: "0.3rem" }}>
+          <div style={{ color: "var(--custodia-accent)", fontWeight: 700, marginBottom: "0.3rem" }}>
             ✓ Mandate signed — awaiting policy engine
           </div>
           <div>
-            <span style={{ color: "rgba(226,240,255,0.3)" }}>mandateHash: </span>
+            <span style={{ color: "var(--custodia-soft)" }}>mandateHash: </span>
             {result.mandateHash.slice(0, 22)}…
           </div>
           <div
             style={{
               fontSize: 10,
-              color: "rgba(226,240,255,0.3)",
+              color: "var(--custodia-soft)",
               marginTop: "0.3rem",
             }}
           >
@@ -661,8 +661,8 @@ export default function MandateRenderer({
             padding: "0.7rem 1rem",
             borderRadius: 8,
             border: "none",
-            background: isDisabled ? "rgba(0,212,180,0.15)" : "#00d4b4",
-            color: isDisabled ? "rgba(226,240,255,0.35)" : "#0a0f1e",
+            background: isDisabled ? "var(--custodia-accent-dim)" : "var(--custodia-accent)",
+            color: isDisabled ? "var(--custodia-soft)" : "var(--custodia-accent-ink)",
             fontWeight: 700,
             fontSize: 13,
             letterSpacing: "0.04em",
@@ -685,9 +685,9 @@ export default function MandateRenderer({
             style={{
               padding: "0.7rem 1.1rem",
               borderRadius: 8,
-              border: "1px solid rgba(255,60,60,0.3)",
+              border: "1px solid rgba(255, 107, 107, 0.3)",
               background: "transparent",
-              color: "rgba(255,100,100,0.7)",
+              color: "var(--custodia-danger)",
               fontWeight: 600,
               fontSize: 13,
               cursor: isDisabled ? "not-allowed" : "pointer",
@@ -702,7 +702,7 @@ export default function MandateRenderer({
       <p
         style={{
           fontSize: 10,
-          color: "rgba(226,240,255,0.2)",
+          color: "var(--custodia-soft)",
           margin: 0,
           lineHeight: 1.5,
           textAlign: "center",

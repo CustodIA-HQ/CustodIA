@@ -21,17 +21,17 @@ function shortWallet(value: string): string {
 }
 
 function TokenGlyph({ symbol }: { symbol: "ETH" | "USDC" }) {
-  const fill = symbol === "ETH" ? "#627eea" : "#2775ca";
+  const fill = symbol === "ETH" ? "var(--custodia-text)" : "var(--custodia-soft)";
   return (
     <svg className="wallet-card__glyph" viewBox="0 0 32 32" aria-hidden="true">
       <circle cx="16" cy="16" r="16" fill={fill} />
       {symbol === "ETH" ? (
         <path
-          fill="#fff"
+          fill="var(--custodia-accent-ink)"
           d="M16 5.5 8.8 16.2 16 20.4l7.2-4.2L16 5.5Zm0 16.4-7.2-4.2L16 26.5l7.2-8.8-7.2 4.2Z"
         />
       ) : (
-        <text x="16" y="21" textAnchor="middle" fill="#fff" fontSize="13" fontWeight="700">
+        <text x="16" y="21" textAnchor="middle" fill="var(--custodia-accent-ink)" fontSize="13" fontWeight="700">
           $
         </text>
       )}

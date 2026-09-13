@@ -76,8 +76,8 @@ export default function GuardChart({
         <title>{`${market.pair} ${range} hourly closes from The Graph`}</title>
         <defs>
           <linearGradient id="custodia-price-fill" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#00d4b4" stopOpacity="0.28" />
-            <stop offset="100%" stopColor="#00d4b4" stopOpacity="0" />
+            <stop offset="0%" stopColor="var(--custodia-accent)" stopOpacity="0.28" />
+            <stop offset="100%" stopColor="var(--custodia-accent)" stopOpacity="0" />
           </linearGradient>
         </defs>
         {[0, 0.5, 1].map((ratio) => {
@@ -191,7 +191,7 @@ export default function GuardChart({
                 day: "numeric",
                 hour: "numeric",
               })
-            : "—"}
+            : "-"}
         </span>
         <span>
           {last
@@ -200,7 +200,7 @@ export default function GuardChart({
                 day: "numeric",
                 hour: "numeric",
               })
-            : "—"}
+            : "-"}
         </span>
       </div>
     </figure>

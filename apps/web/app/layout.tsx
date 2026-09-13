@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { HomeIntroRouteMarker } from "./components/home-intro-route-marker";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "CustodIA — Universal Agentic Finance Runtime",
+  title: "CustodIA · Universal Agentic Finance Runtime",
   description:
     "Chat intent → live Graph research → paid x402 risk context on Hedera → generated UI → wallet-signed mandate → ENSv2 task record.",
 };
@@ -20,6 +21,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         />
       </head>
       <body>
+        <HomeIntroRouteMarker />
         <a className="skip-link" href="#main">
           Skip to content
         </a>

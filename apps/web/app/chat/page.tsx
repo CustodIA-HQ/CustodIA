@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import ChatSection from "../chat-section";
+import { BackToHome } from "../components/back-to-home";
 import { SiteHeader } from "../components/site-header";
 
 export default function ChatPage() {
@@ -17,23 +18,20 @@ export default function ChatPage() {
 
   if (showWelcome) {
     return (
-      <div className="flex h-screen w-full flex-col items-center justify-center bg-zinc-950">
-        <div className="relative flex h-32 w-32 items-center justify-center animate-pulse">
+      <div className="chat-splash">
+        <BackToHome className="back-to-home--splash" />
+        <div className="chat-splash__mark">
           <Image
             src="/splash-logo.jpg"
             alt="CustodIA Agent"
             width={128}
             height={128}
-            className="rounded-full shadow-[0_0_20px_rgba(16,185,129,0.15)]"
+            className="chat-splash__logo"
             priority
           />
         </div>
-        <h1 className="mt-8 text-2xl font-mono text-zinc-100 tracking-wide">
-          CustodIA
-        </h1>
-        <p className="mt-3 text-sm font-mono text-zinc-500 animate-pulse">
-          Initializing secure environment...
-        </p>
+        <h1 className="chat-splash__title">CustodIA</h1>
+        <p className="chat-splash__status">Initializing secure environment...</p>
       </div>
     );
   }
