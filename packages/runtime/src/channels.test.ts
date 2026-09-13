@@ -7,6 +7,7 @@ import {
   findChannelBinding,
   queueChannelReply,
   sendWhatsAppMessage,
+  summarizeRunEvents,
 } from "./channels.js";
 import { notifyHandler } from "./handlers/notify.js";
 import { leaseJob } from "./jobs.js";
@@ -40,6 +41,36 @@ it("answers with the rationale and a web link when a task needs a signature", ()
     ),
   ).toBe("Guard ready.\n\nReview and sign the boundary on the web: https://app/task/ab12cd34");
   expect(channelReplyText({ status: "failed", output: null }, "https://app")).toMatch(/could not/);
+});
+
+it("answers a holdings question from the streamed text and priced wallet snapshot", () => {
+  const summary = summarizeRunEvents([
+    { type: "stage", payload: null },
+    {
+      type: "tool",
+      payload: {
+        name: "read_portfolio",
+        output: {
+          eth: "0.609765726380609078",
+          usdc: "0",
+          weth: "0",
+          chain: "Ethereum Sepolia testnet",
+        },
+      },
+    },
+    { type: "tool", payload: { name: "get_market_context", output: { priceUsd: 2471.08 } } },
+    { type: "text", payload: { delta: "No history here: " } },
+    { type: "text", payload: { delta: "this is a current snapshot." } },
+  ]);
+  expect(
+    channelReplyText({ status: "done", output: { rationale: "" } }, "https://app", summary),
+  ).toBe(
+    "No history here: this is a current snapshot.\n\nWallet on Ethereum Sepolia testnet: 0.6098 ETH (~$1,507 at $2,471), 0 USDC, 0 WETH. Testnet balances, no real value.",
+  );
+  // Without events, the old behaviour stands.
+  expect(channelReplyText({ status: "done", output: { rationale: "" } }, "https://app")).toBe(
+    "Done.",
+  );
 });
 
 it("queues a Telegram run's answer and the drain delivers it", async () => {

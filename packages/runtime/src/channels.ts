@@ -3,7 +3,7 @@ import { publicAppOrigin } from "@custodia/ens/paths";
 import { NotImplementedError } from "@custodia/schema";
 import { and, eq } from "drizzle-orm";
 import { enqueueJob } from "./jobs.js";
-import { type AnyDb, loadRun } from "./runs.js";
+import { type AnyDb, listEvents, loadRun } from "./runs.js";
 
 /** Where a run's answer goes when it did not start in web chat. Stored on `runs.input.reply`. */
 export type ChannelReply = { channel: "telegram" | "whatsapp"; chatId: string };
@@ -54,6 +54,49 @@ const replyTarget = (input: unknown): ChannelReply | null => {
     : null;
 };
 
+/** Plain-text stand-in for what web chat renders from the event stream (streamed prose, wallet card). */
+export type RunSummary = { text: string; holdings: string | null };
+
+const fmt = (value: number, digits: number) =>
+  value.toLocaleString("en-US", { maximumFractionDigits: digits });
+
+/**
+ * Holdings and research runs answer through streamed text and a wallet card,
+ * not `output.rationale`; a chat only gets text, so rebuild it from the events.
+ */
+export const summarizeRunEvents = (
+  events: Array<{ type: string; payload: unknown }>,
+): RunSummary => {
+  let text = "";
+  let portfolio: { eth?: string; usdc?: string; weth?: string; chain?: string } | null = null;
+  let priceUsd: number | null = null;
+  for (const event of events) {
+    const payload = event.payload as {
+      delta?: string;
+      name?: string;
+      output?: Record<string, unknown>;
+    } | null;
+    if (event.type === "text" && typeof payload?.delta === "string") text += payload.delta;
+    if (event.type !== "tool" || !payload?.output) continue;
+    if (payload.name === "read_portfolio") portfolio = payload.output;
+    if (payload.name === "get_market_context" && typeof payload.output.priceUsd === "number") {
+      priceUsd = payload.output.priceUsd;
+    }
+  }
+  let holdings: string | null = null;
+  if (portfolio) {
+    const eth = Number(portfolio.eth ?? 0);
+    const usdc = Number(portfolio.usdc ?? 0);
+    const weth = Number(portfolio.weth ?? 0);
+    const ethPart =
+      priceUsd !== null
+        ? `${fmt(eth, 4)} ETH (~$${fmt(eth * priceUsd, 0)} at $${fmt(priceUsd, 0)})`
+        : `${fmt(eth, 4)} ETH`;
+    holdings = `Wallet on ${portfolio.chain ?? "Sepolia"}: ${ethPart}, ${fmt(usdc, 2)} USDC, ${fmt(weth, 4)} WETH. Testnet balances, no real value.`;
+  }
+  return { text: text.trim(), holdings };
+};
+
 /**
  * Text + task link back to the channel. Steps that need a wallet (mandate,
  * revoke) stay on the web page — a chat can neither render the form nor sign.
@@ -61,13 +104,17 @@ const replyTarget = (input: unknown): ChannelReply | null => {
 export const channelReplyText = (
   run: { status: string; output: unknown },
   origin = publicAppOrigin(),
+  summary: RunSummary = { text: "", holdings: null },
 ): string => {
   if (run.status !== "done") return "The agent could not complete that request. Please retry.";
   const output = run.output as { rationale?: string; taskId?: string | null } | null;
-  const rationale = output?.rationale?.trim() || "Done.";
-  if (!output?.taskId) return rationale;
-  const link = `${origin}/task/${encodeURIComponent(output.taskId)}`;
-  return `${rationale}\n\nReview and sign the boundary on the web: ${link}`;
+  const parts = [output?.rationale?.trim() || summary.text || "Done."];
+  if (summary.holdings) parts.push(summary.holdings);
+  if (output?.taskId) {
+    const link = `${origin}/task/${encodeURIComponent(output.taskId)}`;
+    parts.push(`Review and sign the boundary on the web: ${link}`);
+  }
+  return parts.join("\n\n");
 };
 
 /** After a run finishes, queue its answer for the channel it came from (no-op for web). */
@@ -75,7 +122,8 @@ export async function queueChannelReply(db: AnyDb, runId: string): Promise<void>
   const run = await loadRun(db, runId);
   const target = run ? replyTarget(run.input) : null;
   if (!run || !target) return;
-  await queueChannelMessage(db, target, channelReplyText(run));
+  const summary = summarizeRunEvents(await listEvents(db, runId));
+  await queueChannelMessage(db, target, channelReplyText(run, publicAppOrigin(), summary));
 }
 
 /** Queue text for a chat channel; the worker's notify.drain delivers it. */
