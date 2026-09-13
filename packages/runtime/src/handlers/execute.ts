@@ -28,7 +28,7 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { sepolia } from "viem/chains";
-import { queueChannelMessageForRun } from "../channels.js";
+import { notifyOwner, queueChannelMessageForRun } from "../channels.js";
 import type { JobHandler } from "../registry.js";
 import { loadLatestMandate, loadTask } from "../tasks.js";
 
@@ -102,8 +102,13 @@ export const executeHandler: JobHandler = async ({ db, job, heartbeat }) => {
       .update(tables.actions)
       .set({ ...patch, updatedAt: new Date() })
       .where(eq(tables.actions.id, actionId));
+  // A chat order answers in its chat; an agent-initiated action reaches every chat the owner paired.
+  const agentInitiated = action.reason?.startsWith("agent:") ?? false;
+  const prefix = agentInitiated ? `Agent action — ${action.reason?.slice(7)}.\n\n` : "";
   const notify = (text: string) =>
-    action.runId ? queueChannelMessageForRun(db, action.runId, text) : Promise.resolve();
+    action.runId
+      ? queueChannelMessageForRun(db, action.runId, prefix + text)
+      : notifyOwner(db, task.userWallet, prefix + text);
   const refuse = async (reason: string) => {
     await update({ status: "refused", reason });
     await db.insert(tables.outbox).values({
@@ -212,7 +217,7 @@ export const executeHandler: JobHandler = async ({ db, job, heartbeat }) => {
     nonce: vault.actionNonce,
     amountIn: amountIn.toString(),
     minOut: minOut.toString(),
-    reason: decision.reason,
+    reason: agentInitiated ? action.reason : decision.reason,
   });
   await heartbeat();
 

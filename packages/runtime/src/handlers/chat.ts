@@ -7,9 +7,12 @@ import { eq } from "drizzle-orm";
 import {
   findActiveTask,
   findExecutableTask,
+  findOpenProposal,
   fundVaultUrl,
+  parseConfirmation,
   parseOrder,
   queueOrder,
+  resolveProposal,
 } from "../actions.js";
 import { queueChannelReply } from "../channels.js";
 import { storeProposal } from "../proposals.js";
@@ -68,6 +71,25 @@ async function runChat(
       type: "tool",
       payload: { type: "tool", name: "classify_intent", output: { intent } },
     });
+    // YES / NO answers the agent's open proposal (rebalance) before anything else.
+    const answer = parseConfirmation(lastUser?.content ?? "");
+    const open = answer ? await findOpenProposal(db, owner) : null;
+    if (answer && open) {
+      await resolveProposal(db, open.action.id, answer, runId);
+      await chain;
+      await completeRun(db, runId, {
+        proposalId: null,
+        proposalHash: null,
+        ensName: open.task.ensName,
+        taskId: null,
+        rationale:
+          answer === "yes"
+            ? "Confirmed. Submitting it through the boundary now; you'll get the result with the transaction link."
+            : "Skipped. Nothing moved; I'll tell you if the vault drifts again.",
+        receipts: [],
+      });
+      return true;
+    }
     // A plain order on a funded task goes to the vault executor, not the model.
     if (intent === "execute") {
       const order = parseOrder(lastUser?.content ?? "");

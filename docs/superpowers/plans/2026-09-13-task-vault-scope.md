@@ -1,6 +1,6 @@
 # TaskVault scope — agent trades inside the boundary, user is notified
 
-Date: 2026-09-13 · Status: proposed · Builds on §Task vault of `2026-09-11-custodia-v1-spec.md` and Stage 4/5 of the master plan.
+Date: 2026-09-13 · Status: **implemented** (commit series ending 2026-09-13; autonomy = drawdown guard executes, rebalance asks for YES) · Builds on §Task vault of `2026-09-11-custodia-v1-spec.md` and Stage 4/5 of the master plan.
 
 ## Goal
 

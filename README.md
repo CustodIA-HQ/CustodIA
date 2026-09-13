@@ -133,6 +133,20 @@ reported to the chat with the reason; nothing moves.
 | Deploy / deposit / withdraw / revoke UI | `apps/web/app/task/[id]/vault-panel.tsx` |
 | Definition of done | `pnpm verify:vault` — deploys, funds, executes one order, refuses one over the cap, revokes |
 
+### What the agent does on its own
+
+The worker re-checks every funded vault once a minute against the signed boundary:
+
+| Signed rule | Trigger | Agent behaviour |
+|---|---|---|
+| `max_drawdown_pct` | vault value falls that far below its high-water mark (USD at the reference price) | **Executes** — moves ETH to USDC, one per-trade cap at a time, and reports "Agent action — drawdown guard: … Tx: …" to every chat the owner paired |
+| `allow_rebalance` + the signed ETH/USDC target | ETH share drifts more than 5 points | **Proposes** — "Reply YES to swap … or NO to skip" in the owner's chats; YES executes through the same path, the proposal expires after 30 min |
+| anything else | — | nothing; "do nothing" is always a valid outcome |
+
+At most one agent-initiated action or proposal per task every 10 minutes, never while
+another action is in flight, and always inside the per-trade / cumulative caps the vault
+enforces. Revoking the vault stops all of it.
+
 Keys: `EXECUTION_PRIVATE_KEY` (sends `executeSwap`, needs gas, cannot withdraw) and
 `POLICY_SIGNER_PRIVATE_KEY` (approves single actions, never transacts) live in the
 worker env only. Sepolia only; the WETH/USDC 0.05 % pool's test liquidity prices ETH
@@ -167,6 +181,6 @@ window. Signals use the previous close and fills the next close. Results include
 buy-and-hold comparison and all observations for repeatable analysis. It does not
 write fills or authorize actions, and is not actual wallet performance history.
 
-Live priced trades are user-triggered; replay runs the allocation strategy
-through history automatically. This addition does not enable an unattended
-live-market trading worker or move any tokens.
+Paper trades are user-triggered; replay runs the allocation strategy through
+history automatically. Real execution and the agent's own actions run only through
+a funded TaskVault (see above).

@@ -2,6 +2,7 @@ import { resolve } from "node:path";
 import { createPooledDb } from "@custodia/db";
 import {
   chatHandler,
+  enqueueJob,
   ensAttachHandler,
   ensPublishHandler,
   ensVerifySubdomainHandler,
@@ -36,8 +37,22 @@ for (const signal of ["SIGINT", "SIGTERM"] as const) {
   });
 }
 
+// The watch loop: monitor.active every minute (deduped, so several workers share one).
+const MONITOR_EVERY_MS = 60_000;
+let nextMonitorAt = 0;
+
 console.log(`[worker ${workerId}] handling ${registry.kinds().join(", ")}`);
 while (!stopping) {
+  if (Date.now() >= nextMonitorAt) {
+    nextMonitorAt = Date.now() + MONITOR_EVERY_MS;
+    await enqueueJob(db, {
+      kind: "monitor.active",
+      payload: {},
+      dedupeKey: "monitor.active",
+    }).catch((error: unknown) =>
+      console.error(`[worker] monitor enqueue: ${error instanceof Error ? error.message : error}`),
+    );
+  }
   const outcome = await tick(db, registry, workerId);
   if (outcome === "idle") await new Promise((r) => setTimeout(r, IDLE_MS));
 }

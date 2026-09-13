@@ -90,7 +90,7 @@ export const tokenOf = (asset: VaultAsset) => VAULT_ASSETS[asset];
  */
 export async function queueOrder(
   db: AnyDb,
-  params: { taskId: string; vault: string; runId: string | null; order: Order },
+  params: { taskId: string; vault: string; runId: string | null; order: Order; reason?: string },
 ): Promise<string> {
   const { order } = params;
   const buyAmount = order.exactOutput === true;
@@ -107,7 +107,7 @@ export async function queueOrder(
       : parseUnits(order.amount.toString(), DECIMALS[order.sell]).toString(),
     minOut: buyAmount ? parseUnits(order.amount.toString(), DECIMALS[order.buy]).toString() : null,
     status: "previewed",
-    reason: buyAmount ? "exact-output order: input sized from the quote" : null,
+    reason: params.reason ?? (buyAmount ? "exact-output order: input sized from the quote" : null),
   });
   await enqueueJob(db, {
     kind: "execute",
@@ -120,3 +120,88 @@ export async function queueOrder(
 
 export const fundVaultUrl = (taskId: string, origin = publicAppOrigin()): string =>
   `${origin}/task/${encodeURIComponent(taskId)}#vault`;
+
+/** How long an agent proposal waits for the owner's YES. */
+export const PROPOSAL_TTL_S = 30 * 60;
+
+/** Persist an agent proposal that needs the owner's YES before it becomes an order. */
+export async function proposeOrder(
+  db: AnyDb,
+  params: { taskId: string; vault: string; order: Order; reason: string },
+): Promise<string> {
+  const { order } = params;
+  const id = randomUUID();
+  await db.insert(tables.actions).values({
+    id,
+    taskId: params.taskId,
+    vault: params.vault,
+    runId: null,
+    tokenIn: tokenOf(order.sell),
+    tokenOut: tokenOf(order.buy),
+    amountIn: order.exactOutput
+      ? "0"
+      : parseUnits(order.amount.toString(), DECIMALS[order.sell]).toString(),
+    minOut: order.exactOutput
+      ? parseUnits(order.amount.toString(), DECIMALS[order.buy]).toString()
+      : null,
+    status: "proposed",
+    reason: params.reason,
+  });
+  return id;
+}
+
+/** The owner's open (unexpired) proposal, if any. */
+export async function findOpenProposal(db: AnyDb, ownerWallet: string) {
+  const rows = await db
+    .select({ action: tables.actions, task: tables.tasks })
+    .from(tables.actions)
+    .innerJoin(tables.tasks, eq(tables.actions.taskId, tables.tasks.id))
+    .where(and(eq(tables.tasks.userWallet, ownerWallet), eq(tables.actions.status, "proposed")))
+    .orderBy(desc(tables.actions.createdAt))
+    .limit(1);
+  const row = rows[0];
+  if (!row) return null;
+  if (Date.now() - row.action.createdAt.getTime() > PROPOSAL_TTL_S * 1_000) {
+    await db
+      .update(tables.actions)
+      .set({ status: "expired", updatedAt: new Date() })
+      .where(eq(tables.actions.id, row.action.id));
+    return null;
+  }
+  return row;
+}
+
+/** "yes" / "no" (and a few synonyms) — the only words that resolve a proposal. */
+export const parseConfirmation = (message: string): "yes" | "no" | null => {
+  const t = message.trim().toLowerCase();
+  if (/^(yes|y|si|sí|confirm|confirmo|ok|go|do it)(?![a-z])/.test(t)) return "yes";
+  if (/^(no|n|cancel|cancela|skip|stop)(?![a-z])/.test(t)) return "no";
+  return null;
+};
+
+/** YES turns the proposal into an order bound to this chat run; NO declines it. */
+export async function resolveProposal(
+  db: AnyDb,
+  actionId: string,
+  answer: "yes" | "no",
+  runId: string,
+): Promise<void> {
+  if (answer === "no") {
+    await db
+      .update(tables.actions)
+      .set({ status: "declined", updatedAt: new Date() })
+      .where(eq(tables.actions.id, actionId));
+    return;
+  }
+  const [row] = await db.select().from(tables.actions).where(eq(tables.actions.id, actionId));
+  if (!row) return;
+  await db
+    .update(tables.actions)
+    .set({ status: "previewed", runId, updatedAt: new Date() })
+    .where(eq(tables.actions.id, actionId));
+  await enqueueJob(db, {
+    kind: "execute",
+    payload: { actionId },
+    dedupeKey: `execute:${row.vault}`,
+  });
+}

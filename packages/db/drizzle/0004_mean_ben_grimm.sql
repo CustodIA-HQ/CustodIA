@@ -1,0 +1,1 @@
+ALTER TABLE "tasks" ADD COLUMN "high_water_usd" text;

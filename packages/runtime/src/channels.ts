@@ -217,6 +217,19 @@ export async function queueChannelMessageForRun(
   if (target) await queueChannelMessage(db, target, text);
 }
 
+/** Queue text for every chat the owner paired (agent-initiated events have no originating run). */
+export async function notifyOwner(db: AnyDb, ownerWallet: string, text: string): Promise<void> {
+  const bindings = await db
+    .select()
+    .from(tables.channelBindings)
+    .where(eq(tables.channelBindings.ownerWallet, ownerWallet));
+  for (const b of bindings) {
+    if (b.channel === "telegram" || b.channel === "whatsapp") {
+      await queueChannelMessage(db, { channel: b.channel, chatId: b.externalId }, text);
+    }
+  }
+}
+
 /** Queue text for a chat channel; the worker's notify.drain delivers it. */
 export async function queueChannelMessage(
   db: AnyDb,

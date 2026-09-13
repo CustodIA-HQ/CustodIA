@@ -31,6 +31,8 @@ export const tasks = pgTable("tasks", {
   // TaskVault the owner deployed for this task (Sepolia). Null = simulation only.
   vault: text("vault"),
   vaultMandateHash: text("vault_mandate_hash"),
+  // Highest vault value seen (USD at the reference price); the drawdown guard measures from here.
+  highWaterUsd: text("high_water_usd"),
 });
 
 /**

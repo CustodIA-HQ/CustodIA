@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { parseOrder } from "./actions.js";
+import { parseConfirmation, parseOrder } from "./actions.js";
 
 it("parses unmistakable orders and nothing else", () => {
   expect(parseOrder("swap 0.01 eth to usdc")).toEqual({ sell: "ETH", buy: "USDC", amount: 0.01 });
@@ -22,4 +22,14 @@ it("parses unmistakable orders and nothing else", () => {
   expect(parseOrder("should I sell my ETH?")).toBeNull();
   expect(parseOrder("what is eth doing")).toBeNull();
   expect(parseOrder("swap 0.01 eth to eth")).toBeNull();
+});
+
+it("recognises YES / NO answers and nothing else", () => {
+  expect(parseConfirmation("yes")).toBe("yes");
+  expect(parseConfirmation("YES please")).toBe("yes");
+  expect(parseConfirmation("sí")).toBe("yes");
+  expect(parseConfirmation("no")).toBe("no");
+  expect(parseConfirmation("cancel that")).toBe("no");
+  expect(parseConfirmation("yesterday was fine")).toBeNull();
+  expect(parseConfirmation("what is eth doing")).toBeNull();
 });
