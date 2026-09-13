@@ -21,7 +21,7 @@ vi.mock("@custodia/runtime", () => ({
 }));
 vi.mock("viem/accounts", () => ({ privateKeyToAccount: mocks.privateKeyToAccount }));
 
-import { createPairingCode } from "../channels/pairing";
+import { createPairingCode, readConnectToken } from "../channels/pairing";
 import { GET, POST } from "./route";
 
 const wallet = "0x2222222222222222222222222222222222222222" as const;
@@ -96,8 +96,11 @@ it("sends an unpaired number to connect its wallet through the outbox", async ()
   expect(mocks.queueChannelMessage).toHaveBeenCalledWith(
     {},
     target,
-    "This number is not paired with a wallet. Connect it at https://app.test/whatsapp",
+    expect.stringContaining("https://app.test/connect?t="),
   );
+  const text = String((mocks.queueChannelMessage.mock.calls[0] as unknown[])[2]);
+  const token = new URL(text.match(/https:\/\/\S+/)?.[0] ?? "").searchParams.get("t") ?? "";
+  expect(readConnectToken(token)).toMatchObject({ channel: "whatsapp", externalId: from });
   expect(mocks.createRun).not.toHaveBeenCalled();
 });
 

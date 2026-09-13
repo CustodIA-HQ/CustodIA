@@ -6,7 +6,7 @@ import { publicAppOrigin } from "@custodia/ens/paths";
 import { bindChannel, createRun, enqueueJob, findChannelBinding } from "@custodia/runtime";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { readPairingCode } from "../channels/pairing";
+import { connectUrl, readPairingCode } from "../channels/pairing";
 import { getAgentAddress } from "../identity";
 
 const MAX_MESSAGE_LENGTH = 4_000;
@@ -43,7 +43,7 @@ const secretMatches = (provided: string | null, expected: string): boolean => {
  * POST /api/telegram — Telegram webhook. The chat is transport: a paired
  * Telegram user's text becomes a durable `chat.run` for their wallet, the
  * worker runs it, and the answer comes back through the outbox. Unpaired
- * users are sent to the web to prove their wallet first.
+ * users get a short-lived link to sign with their wallet first.
  */
 export async function POST(request: Request) {
   const expected = process.env.TELEGRAM_WEBHOOK_SECRET?.trim();
@@ -65,25 +65,32 @@ export async function POST(request: Request) {
   const chatId = message.chat.id;
   const externalId = String(message.from.id);
   const text = message.text.trim();
-  const pairUrl = `${publicAppOrigin()}/telegram`;
 
   try {
+    const verify = () =>
+      reply(
+        chatId,
+        `Verify your wallet to start. Open this link and sign with your wallet (valid 15 minutes): ${connectUrl("telegram", externalId, publicAppOrigin())}`,
+      );
+
+    // A /start code from a signed web session still pairs directly.
     const start = text.match(/^\/start(?:\s+(\S+))?$/);
-    if (start) {
-      const wallet = start[1] ? readPairingCode("telegram", start[1]) : null;
-      if (!wallet) {
-        return reply(
-          chatId,
-          `Connect your wallet first. Open ${pairUrl} and tap Connect Telegram.`,
-        );
-      }
-      await bindChannel(getDb(), { channel: "telegram", externalId, ownerWallet: wallet });
-      return reply(chatId, `Paired with ${wallet}. Ask about ETH or set a protection boundary.`);
+    const startWallet = start?.[1] ? readPairingCode("telegram", start[1]) : null;
+    if (startWallet) {
+      await bindChannel(getDb(), { channel: "telegram", externalId, ownerWallet: startWallet });
+      return reply(
+        chatId,
+        `Paired with ${startWallet}. Ask about ETH or set a protection boundary.`,
+      );
     }
 
     const ownerWallet = await findChannelBinding(getDb(), "telegram", externalId);
-    if (!ownerWallet) {
-      return reply(chatId, `This chat is not paired with a wallet. Connect it at ${pairUrl}`);
+    if (!ownerWallet) return verify();
+    if (start) {
+      return reply(
+        chatId,
+        `Paired with ${ownerWallet}. Ask about ETH or set a protection boundary.`,
+      );
     }
     if (text.length > MAX_MESSAGE_LENGTH) {
       return reply(chatId, `Messages are limited to ${MAX_MESSAGE_LENGTH} characters.`);

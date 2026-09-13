@@ -12,7 +12,7 @@ import {
 } from "@custodia/runtime";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { readPairingCode } from "../channels/pairing";
+import { connectUrl, readPairingCode } from "../channels/pairing";
 import { getAgentAddress } from "../identity";
 
 const MAX_MESSAGE_LENGTH = 4_000;
@@ -97,12 +97,13 @@ export async function POST(request: Request) {
   const messages = parsed.data.entry.flatMap((entry) =>
     entry.changes.flatMap((change) => change.value.messages ?? []),
   );
-  const pairUrl = `${publicAppOrigin()}/whatsapp`;
 
   try {
     for (const message of messages) {
       if (message.type !== "text" || !message.text) continue;
       const target = { channel: "whatsapp" as const, chatId: message.from };
+      const verifyText = () =>
+        `Verify your wallet to start. Open this link and sign with your wallet (valid 15 minutes): ${connectUrl("whatsapp", message.from, publicAppOrigin())}`;
       const text = message.text.body.trim();
 
       const connect = text.match(/^connect\s+(\S+)$/i);
@@ -112,7 +113,7 @@ export async function POST(request: Request) {
           await queueChannelMessage(
             getDb(),
             target,
-            `That pairing code is invalid or expired. Get a new one at ${pairUrl}`,
+            `That pairing code is invalid or expired. ${verifyText()}`,
           );
           continue;
         }
@@ -131,11 +132,7 @@ export async function POST(request: Request) {
 
       const ownerWallet = await findChannelBinding(getDb(), "whatsapp", message.from);
       if (!ownerWallet) {
-        await queueChannelMessage(
-          getDb(),
-          target,
-          `This number is not paired with a wallet. Connect it at ${pairUrl}`,
-        );
+        await queueChannelMessage(getDb(), target, verifyText());
         continue;
       }
       if (text.length > MAX_MESSAGE_LENGTH) {

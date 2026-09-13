@@ -18,7 +18,7 @@ vi.mock("@custodia/runtime", () => ({
 }));
 vi.mock("viem/accounts", () => ({ privateKeyToAccount: mocks.privateKeyToAccount }));
 
-import { createPairingCode, readPairingCode } from "../channels/pairing";
+import { createPairingCode, readConnectToken, readPairingCode } from "../channels/pairing";
 import { POST } from "./route";
 
 const wallet = "0x2222222222222222222222222222222222222222" as const;
@@ -63,14 +63,17 @@ it("rejects an update without the webhook secret", async () => {
   expect(mocks.createRun).not.toHaveBeenCalled();
 });
 
-it("sends an unpaired user to connect their wallet and enqueues nothing", async () => {
-  const response = await update("guard my eth");
-  expect(await response.json()).toEqual({
-    method: "sendMessage",
-    chat_id: 555,
-    text: "This chat is not paired with a wallet. Connect it at https://app.test/telegram",
-  });
+it("sends an unpaired user a wallet verification link and enqueues nothing", async () => {
+  for (const text of ["guard my eth", "/start"]) {
+    const response = await update(text);
+    const body = await response.json();
+    expect(body).toMatchObject({ method: "sendMessage", chat_id: 555 });
+    const token = new URL(body.text.match(/https:\/\/\S+/)[0]).searchParams.get("t") ?? "";
+    expect(body.text).toContain("https://app.test/connect?t=");
+    expect(readConnectToken(token)).toMatchObject({ channel: "telegram", externalId: "777" });
+  }
   expect(mocks.createRun).not.toHaveBeenCalled();
+  expect(mocks.bindChannel).not.toHaveBeenCalled();
 });
 
 it("pairs the Telegram user with the wallet in a valid start code", async () => {

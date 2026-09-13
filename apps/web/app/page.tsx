@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { ChannelButtons } from "./components/channel-buttons";
 import { ChatEntrySection } from "./components/chat-entry-section";
 import { HomeShell } from "./components/home-shell";
@@ -28,9 +27,6 @@ export default function Home() {
             </p>
             <div className="home-hero__actions">
               <ChannelButtons />
-              <Link className="btn-ghost" href="/ux">
-                See generated UX
-              </Link>
             </div>
             <p className="home-hero__note">
               Sepolia and Hedera testnet. Test tokens have no value. Execution is simulated.
