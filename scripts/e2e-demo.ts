@@ -118,6 +118,11 @@ const vr = await post("/api/auth/verify", {
 });
 const cookie = vr.headers.get("set-cookie")?.split(";")[0] as string;
 log(`## 1. Sign-in — ${vr.status} ${cookie ? "✓" : "✗"}`);
+if (!cookie) {
+  // Every later step needs the session; stop here instead of reporting 12 cascaded 401s.
+  log(`✗ verify: ${await vr.text()}`);
+  process.exit(1);
+}
 
 // ── 2. static pages ───────────────────────────────────────────────────────────
 log("## 2. Pages");
@@ -345,10 +350,29 @@ log("## 5. Simulate + revoke");
 const target = published.find((p) => p.id === "portfolio_guard") ?? published[0];
 if (target) {
   const inside = await j(
-    await post(`/api/tasks/${target.taskId}/simulate`, { notionalUsd: 50 }, cookie),
+    await post(
+      `/api/tasks/${target.taskId}/simulate`,
+      { fromAsset: "ETH", toAsset: "USDC", notionalUsd: 50, requestId: randomUUID() },
+      cookie,
+    ),
   );
+  if (!(inside as { fill?: unknown }).fill || !(inside as { state?: unknown }).state)
+    issue("paper trade returned no priced fill or ledger state");
+  const replayResponse = await post(
+    `/api/tasks/${target.taskId}/replay`,
+    { targetEthPct: 50 },
+    cookie,
+  );
+  const replayBody = await j(replayResponse);
+  if (!replayResponse.ok || !Array.isArray(replayBody.results))
+    issue("historical paper replay failed");
+  else log(`   replay → ${replayBody.results.length} observations; equity ${replayBody.equityUsd}`);
   const outside = await j(
-    await post(`/api/tasks/${target.taskId}/simulate`, { notionalUsd: 50_000 }, cookie),
+    await post(
+      `/api/tasks/${target.taskId}/simulate`,
+      { fromAsset: "ETH", toAsset: "USDC", notionalUsd: 50_000, requestId: randomUUID() },
+      cookie,
+    ),
   );
   log(`   simulate $50 → ${JSON.stringify(inside).slice(0, 160)}`);
   log(`   simulate $50,000 → ${JSON.stringify(outside).slice(0, 160)}`);
@@ -366,9 +390,14 @@ if (target) {
   );
   log(`   revoke → ${rv.status} ${JSON.stringify(await j(rv)).slice(0, 160)}`);
   if (!rv.ok) issue("revoke failed");
-  const again = await j(
-    await post(`/api/tasks/${target.taskId}/simulate`, { notionalUsd: 50 }, cookie),
+  const afterRevoke = await post(
+    `/api/tasks/${target.taskId}/simulate`,
+    { fromAsset: "ETH", toAsset: "USDC", notionalUsd: 50, requestId: randomUUID() },
+    cookie,
   );
+  const again = await j(afterRevoke);
+  if (afterRevoke.status !== 409)
+    issue(`simulation after revoke was not blocked (${afterRevoke.status})`);
   log(`   simulate after revoke → ${JSON.stringify(again).slice(0, 120)}`);
   await shots(`task-${target.id}-revoked`, `/task/${target.taskId}`, cookie);
   await shots(`audit-${target.id}`, `/audit/${target.taskId}`, cookie);
@@ -380,4 +409,4 @@ report.push("", "## Issues", ...(issues.length ? issues.map((s) => `- ${s}`) : [
 writeFileSync(`${OUT}/report.md`, report.join("\n"));
 browser.close();
 log(`DONE — ${issues.length} issue(s). Report: ${OUT}/report.md`);
-process.exit(0);
+process.exit(issues.length ? 1 : 0);
