@@ -278,6 +278,23 @@ html, body {
   border-color: rgba(42, 171, 238, 0.4);
 }
 
+/* Web chat: the brand accent, so it reads as CustodIA's own surface next to the two messengers. */
+.channel-btn--web {
+  border-color: var(--custodia-accent-line);
+  background: var(--custodia-accent-dim);
+  color: var(--custodia-accent);
+}
+
+.channel-btn--web svg {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.channel-btn--web:hover,
+.channel-btn--web:focus-visible {
+  border-color: var(--custodia-accent);
+}
+
 .channel-btn:hover,
 .channel-btn:focus-visible {
   border-color: rgba(255, 255, 255, 0.28);
