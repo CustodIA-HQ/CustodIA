@@ -3911,3 +3911,23 @@ body.ux-layer-chart .dash-chart-zoom__scrim {
     display: none;
   }
 }
+
+/* Legal pages (/privacy) */
+.legal {
+  max-width: 46rem;
+}
+.legal h2 {
+  margin: 2rem 0 0.6rem;
+  color: var(--custodia-text);
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+.legal ul {
+  margin: 0 0 1.25rem;
+  padding-left: 1.25rem;
+  color: var(--custodia-muted);
+  line-height: 1.65;
+}
+.legal li {
+  margin-bottom: 0.5rem;
+}
