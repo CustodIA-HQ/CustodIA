@@ -267,6 +267,7 @@ export const MarketContextSchema = z.object({
   tvlUsd: z.number(),
   hourly: z.array(z.object({ ts: z.number(), close: z.number() })).min(24),
   block: z.number().int(),
+  sourceTimestamp: z.number().int().optional(),
   fetchedAt: z.number(),
 });
 export type MarketContext = z.infer<typeof MarketContextSchema>;
@@ -288,7 +289,7 @@ export const RiskRequestInputSchema = z.object({
 export type RiskRequestInput = z.infer<typeof RiskRequestInputSchema>;
 
 export const ReceiptSchema = z.object({
-  kind: z.enum(["x402", "ens_tx", "simulated"]),
+  kind: z.enum(["x402", "ens_tx", "simulated", "paper"]),
   txId: z.string(),
   network: z.string(),
   amount: z.string().optional(),

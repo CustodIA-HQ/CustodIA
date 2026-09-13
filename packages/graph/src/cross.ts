@@ -94,6 +94,7 @@ export const expandCrossPairs = (venues: MarketContext[]): MarketContext[] => {
         tvlUsd: physical?.tvlUsd ?? 0,
         hourly,
         block: template.block,
+        sourceTimestamp: template.sourceTimestamp,
         fetchedAt: template.fetchedAt,
       });
     }

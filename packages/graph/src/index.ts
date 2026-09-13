@@ -57,7 +57,7 @@ const FALLBACK_SNAPSHOT_HOURS = 48;
 const MARKET_QUERY = gql`
   query Market($poolId: ID!, $hours: Int!) {
     _meta {
-      block { number }
+      block { number timestamp }
     }
     liquidityPool(id: $poolId) {
       name
@@ -81,7 +81,12 @@ const MARKET_QUERY = gql`
 // the only place raw responses may cross from the wire into the domain.
 const MarketResponseSchema = z
   .object({
-    _meta: z.object({ block: z.object({ number: z.number().int() }) }),
+    _meta: z.object({
+      block: z.object({
+        number: z.number().int(),
+        timestamp: z.number().int().nullable().optional(),
+      }),
+    }),
     liquidityPool: z
       .object({
         name: z.string(),
@@ -241,6 +246,7 @@ const fetchVenue = async (
     tvlUsd,
     hourly,
     block: _meta.block.number,
+    sourceTimestamp: _meta.block.timestamp ?? undefined,
     fetchedAt: Date.now(),
   };
 
