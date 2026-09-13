@@ -28,8 +28,8 @@ export default function PrivacyPage() {
             you message us from on WhatsApp. We store these only to link the chat to your wallet.
           </li>
           <li>
-            <strong>Wallet address.</strong> The public address you verify by signing a message.
-            We never receive or store private keys.
+            <strong>Wallet address.</strong> The public address you verify by signing a message. We
+            never receive or store private keys.
           </li>
           <li>
             <strong>Messages.</strong> The text you send to the agent, and the agent's replies, so
@@ -41,8 +41,8 @@ export default function PrivacyPage() {
           </li>
         </ul>
         <p>
-          We do not collect names, email addresses, contacts, location or device identifiers, and
-          we do not read messages you send to anyone other than the CustodIA bot.
+          We do not collect names, email addresses, contacts, location or device identifiers, and we
+          do not read messages you send to anyone other than the CustodIA bot.
         </p>
 
         <h2>How we use it</h2>
@@ -72,15 +72,15 @@ export default function PrivacyPage() {
         <h2>Public blockchain data</h2>
         <p>
           Signed mandates are recorded as ENS subnames on Ethereum Sepolia, and agent payments are
-          recorded on Hedera testnet. Anything written to a blockchain is public and permanent
-          and cannot be deleted by us. These are test networks; the tokens involved have no value.
+          recorded on Hedera testnet. Anything written to a blockchain is public and permanent and
+          cannot be deleted by us. These are test networks; the tokens involved have no value.
         </p>
 
         <h2>Retention and deletion</h2>
         <p>
-          Off-chain data (chat links, messages, proposals) is kept while the prototype runs. You
-          can unlink your chat account at any time by asking us, and you can revoke any task's
-          agent permissions from its task page. Email {CONTACT_EMAIL} to request deletion of your
+          Off-chain data (chat links, messages, proposals) is kept while the prototype runs. You can
+          unlink your chat account at any time by asking us, and you can revoke any task's agent
+          permissions from its task page. Email {CONTACT_EMAIL} to request deletion of your
           off-chain data; we will remove it within 30 days.
         </p>
 
@@ -97,8 +97,8 @@ export default function PrivacyPage() {
 
         <h2>Changes and contact</h2>
         <p>
-          We may update this policy as the prototype evolves; the date above will change when we
-          do. Questions: {CONTACT_EMAIL}.
+          We may update this policy as the prototype evolves; the date above will change when we do.
+          Questions: {CONTACT_EMAIL}.
         </p>
       </section>
       <SiteFooter />
