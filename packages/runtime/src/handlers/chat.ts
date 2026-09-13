@@ -15,11 +15,18 @@ import {
   resolveProposal,
 } from "../actions.js";
 import { queueChannelReply } from "../channels.js";
-import { checkName, claimUrl, describeMyName, parseNameCommand } from "../names.js";
+import {
+  checkName,
+  claimUrl,
+  describeMyName,
+  isAutoLabel,
+  parseNameCommand,
+  releaseUrl,
+} from "../names.js";
 import { storeProposal } from "../proposals.js";
 import type { JobHandler } from "../registry.js";
 import { appendEvent, completeRun, failRun, type RunStage } from "../runs.js";
-import { getOrCreateUserLabel } from "../users.js";
+import { getOrCreateUserLabel, getStoredUserLabel } from "../users.js";
 
 const STAGE_FOR_TOOL: Record<string, RunStage> = {
   get_market_context: "fetching_context",
@@ -78,6 +85,14 @@ async function runChat(
       let rationale: string;
       if (nameCommand.kind === "mine") {
         rationale = await describeMyName(db, owner);
+      } else if (nameCommand.kind === "release") {
+        const label = await getStoredUserLabel(db, owner);
+        if (isAutoLabel(label) || !label) {
+          rationale = "You have no claimed CustodIA name to release.";
+        } else {
+          const name = `${label}.${getParentName()}`;
+          rationale = `Releasing ${name} clears its records on Sepolia and frees the name; tasks under it must be revoked first. Sign once with your wallet to confirm (link valid 15 minutes): ${releaseUrl(owner, label)}`;
+        }
       } else {
         const check = await checkName(db, owner, nameCommand.label);
         rationale = check.text;

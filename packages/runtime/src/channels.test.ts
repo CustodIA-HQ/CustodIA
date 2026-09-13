@@ -224,6 +224,7 @@ it("sends a holdings answer with a graph link, or text only when asked", async (
   };
 
   const graph = await ask("show my portfolio", "g1");
+  expect(graph.text).toContain("You don't have a CustodIA name yet"); // no users row → nudge
   expect(graph.text).toMatch(
     /^Current snapshot\.\n\nWallet on Ethereum Sepolia testnet: 1 ETH \(~\$2,000 at \$2,000\)/,
   );
@@ -239,6 +240,7 @@ it("sends a holdings answer with a graph link, or text only when asked", async (
   vi.stubEnv("ENS_PARENT_NAME", "custodia.eth");
   const named = await ask("show my portfolio", "g3");
   expect(named.text).toContain("Graph: https://app.test/alice.custodia.eth/wallet");
+  expect(named.text).not.toContain("CustodIA name yet"); // claimed → no nudge
   await ctx.db.delete(tables.users).where(eq(tables.users.wallet, "0xowner"));
 
   const text = await ask("show my portfolio in text", "g2");

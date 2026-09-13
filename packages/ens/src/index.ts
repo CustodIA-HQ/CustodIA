@@ -13,6 +13,8 @@ export {
   createOwnerName,
   createTask,
   lookupOwnerRecord,
+  readOwnerRecords,
+  releaseOwnerName,
   resolveOwner,
   resolveTask,
   revokeAgent,

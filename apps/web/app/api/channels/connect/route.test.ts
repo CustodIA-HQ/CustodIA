@@ -19,6 +19,8 @@ vi.mock("@custodia/agent", async (orig) => {
 vi.mock("@custodia/runtime", () => ({
   bindChannel: mocks.bindChannel,
   queueChannelMessage: mocks.queueChannelMessage,
+  needsName: async () => true,
+  CLAIM_NUDGE: "You don't have a CustodIA name yet",
 }));
 
 import { privateKeyToAccount } from "viem/accounts";

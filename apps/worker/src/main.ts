@@ -5,6 +5,7 @@ import {
   enqueueJob,
   ensAttachHandler,
   ensPublishHandler,
+  ensReleaseHandler,
   ensVerifySubdomainHandler,
   executeHandler,
   HandlerRegistry,
@@ -25,6 +26,7 @@ const registry = new HandlerRegistry()
   .register("chat.run", chatHandler)
   .register("ens.attach", ensAttachHandler)
   .register("ens.publish", ensPublishHandler)
+  .register("ens.release", ensReleaseHandler)
   .register("ens.verify.subdomain", ensVerifySubdomainHandler)
   .register("execute", executeHandler)
   .register("monitor.active", monitorHandler)

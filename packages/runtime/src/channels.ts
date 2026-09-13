@@ -5,6 +5,7 @@ import { ownerDirectoryPath, publicAppOrigin } from "@custodia/ens/paths";
 import { holdingsLine, NotImplementedError, wantsTextOnly } from "@custodia/schema";
 import { and, eq } from "drizzle-orm";
 import { enqueueJob } from "./jobs.js";
+import { CLAIM_NUDGE, needsName } from "./names.js";
 import { type AnyDb, listEvents, loadRun } from "./runs.js";
 import { getStoredUserLabel } from "./users.js";
 
@@ -214,11 +215,12 @@ export async function queueChannelReply(db: AnyDb, runId: string): Promise<void>
     summary.snapshot && !wantsTextOnly(lastUser?.content ?? "")
       ? await walletViewUrl(db, run.ownerWallet as `0x${string}`, runId)
       : null;
-  await queueChannelMessage(
-    db,
-    target,
-    channelReplyText(run, publicAppOrigin(), summary, graphUrl),
-  );
+  let text = channelReplyText(run, publicAppOrigin(), summary, graphUrl);
+  // A wallet answer is where the identity shows: nudge until a name is claimed.
+  if (summary.snapshot && (await needsName(db, run.ownerWallet as `0x${string}`))) {
+    text += `\n\n${CLAIM_NUDGE}`;
+  }
+  await queueChannelMessage(db, target, text);
 }
 
 /** Queue text for the channel a run came from; no-op for web runs. */

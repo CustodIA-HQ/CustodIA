@@ -9,6 +9,7 @@ import { getStoredUserLabel, isLabelTaken } from "./users.js";
 export type NameCommand =
   | { kind: "check"; label: string }
   | { kind: "claim"; label: string }
+  | { kind: "release" }
   | { kind: "mine" };
 
 const LABEL = "([a-z0-9][a-z0-9-]{1,62}(?:\\.custodia\\.eth)?)";
@@ -27,6 +28,9 @@ export const parseNameCommand = (message: string): NameCommand | null => {
   if (m?.[1]) return { kind: "check", label: m[1] };
   m = t.match(new RegExp(`^(?:check|availability of|is)\\s+(?:the\\s+name\\s+)?${LABEL}\\??$`));
   if (m?.[1] && !/^(eth|usdc|my|the)$/.test(m[1])) return { kind: "check", label: m[1] };
+  if (/^(release|delete|remove|drop|libera|borra)\s+(my\s+)?(ens\s+)?name\s*$/.test(t)) {
+    return { kind: "release" };
+  }
   if (/^(my (ens )?name|what'?s my (ens )?name|which name do i have|mi nombre)\??$/.test(t))
     return { kind: "mine" };
   return null;
@@ -142,3 +146,17 @@ export const readClaimToken = (token: string, now = Date.now()): ClaimTicket | n
 
 export const claimUrl = (wallet: `0x${string}`, label: string): string =>
   `${publicAppOrigin()}/claim?t=${createClaimToken(wallet, label)}`;
+
+/** Auto-generated fallback labels look like wallet-9e15a220; a real identity is anything else. */
+export const isAutoLabel = (label: string | null): boolean =>
+  !label || /^wallet-[0-9a-f]{8}$/.test(label);
+
+/** True until the wallet has claimed a name of its own. */
+export const needsName = async (db: AnyDb, wallet: `0x${string}`): Promise<boolean> =>
+  isAutoLabel(await getStoredUserLabel(db, wallet).catch(() => null));
+
+export const CLAIM_NUDGE =
+  'You don\'t have a CustodIA name yet — your tasks and wallet page are published under an ENS subname. Say "claim <name>" (e.g. "claim alice") to pick one, or "is <name> available?" to check first.';
+
+export const releaseUrl = (wallet: `0x${string}`, label: string): string =>
+  `${publicAppOrigin()}/release?t=${createClaimToken(wallet, label)}`;

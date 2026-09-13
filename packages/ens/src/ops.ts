@@ -110,6 +110,65 @@ export async function createOwnerName(
   return { name, recordsTxId, created: true };
 }
 
+/**
+ * releaseOwnerName — operator-signed. Clears the identity records of
+ * `{label}.{parent}` so the name is free again. Wildcard subnames have no
+ * registration beyond their records, so this is the on-chain "delete".
+ * Refuses unless the current owner record matches `owner` (no-op if empty).
+ */
+export async function releaseOwnerName(
+  config: EnsConfig,
+  params: { userLabel: string; owner: `0x${string}` },
+): Promise<{ name: string; recordsTxId: `0x${string}` | null; released: boolean }> {
+  const name = makeOwnerName(params.userLabel, config.parentName);
+  const pub = publicClient(config);
+  const existing = await pub.getEnsText({ name, key: "xyz.custodia.owner" }).catch(() => null);
+  if (!existing) return { name, recordsTxId: null, released: false };
+  if (existing.toLowerCase() !== params.owner.toLowerCase()) {
+    throw new Error(`${name} is attached to another wallet`);
+  }
+  const wallet = walletClient(config, config.operatorKey);
+  const records: Record<(typeof OWNER_TEXT_KEYS)[number], string> = {
+    "xyz.custodia.owner": "",
+    "xyz.custodia.kind": "released",
+    "xyz.custodia.agent": "",
+    url: "",
+  };
+  const calls = OWNER_TEXT_KEYS.map((key) =>
+    encodeFunctionData({
+      abi: resolverAbi,
+      functionName: "setText",
+      args: [node(name), key, records[key]],
+    }),
+  );
+  const recordsTxId = await confirmed(
+    pub,
+    await wallet.writeContract({
+      address: config.resolverAddress,
+      abi: resolverAbi,
+      functionName: "multicall",
+      args: [calls],
+    }),
+    "owner release multicall",
+  );
+  return { name, recordsTxId, released: true };
+}
+
+/** Every identity text record of `{label}.{parent}`, as published on Sepolia (empty when none). */
+export async function readOwnerRecords(
+  config: EnsConfig,
+  name: string,
+): Promise<Record<(typeof OWNER_TEXT_KEYS)[number], string>> {
+  const pub = publicClient(config);
+  const values = await Promise.all(
+    OWNER_TEXT_KEYS.map((key) => pub.getEnsText({ name, key }).catch(() => null)),
+  );
+  return Object.fromEntries(OWNER_TEXT_KEYS.map((key, i) => [key, values[i] ?? ""])) as Record<
+    (typeof OWNER_TEXT_KEYS)[number],
+    string
+  >;
+}
+
 /** Who owns `{label}.{parent}` on-chain, if anyone. */
 export async function lookupOwnerRecord(config: EnsConfig, name: string): Promise<string | null> {
   const value = await publicClient(config)

@@ -3,6 +3,7 @@ export * from "./channels.js";
 export { chatHandler } from "./handlers/chat.js";
 export { ensAttachHandler } from "./handlers/ens-attach.js";
 export { ensPublishHandler } from "./handlers/ens-publish.js";
+export { ensReleaseHandler } from "./handlers/ens-release.js";
 export { ensVerifySubdomainHandler } from "./handlers/ens-verify.js";
 export { executeHandler } from "./handlers/execute.js";
 export { monitorHandler } from "./handlers/monitor.js";

@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { createClaimToken, parseNameCommand, readClaimToken } from "./names.js";
+import { createClaimToken, isAutoLabel, parseNameCommand, readClaimToken } from "./names.js";
 
 afterEach(() => vi.unstubAllEnvs());
 
@@ -12,6 +12,8 @@ it("parses name commands and nothing else", () => {
   expect(parseNameCommand("is alice available?")).toEqual({ kind: "check", label: "alice" });
   expect(parseNameCommand("check bob-1")).toEqual({ kind: "check", label: "bob-1" });
   expect(parseNameCommand("my name")).toEqual({ kind: "mine" });
+  expect(parseNameCommand("release my name")).toEqual({ kind: "release" });
+  expect(parseNameCommand("delete my ENS name")).toEqual({ kind: "release" });
   expect(parseNameCommand("what's my ENS name?")).toEqual({ kind: "mine" });
   expect(parseNameCommand("is eth available")).toEqual({ kind: "check", label: "eth" });
   expect(parseNameCommand("claim my eth")).toBeNull();
@@ -28,4 +30,10 @@ it("claim links are bound to wallet and label and expire", () => {
   expect(readClaimToken(`${token}x`)).toBeNull();
   const [body] = token.split(".");
   expect(readClaimToken(`${body}.${createClaimToken(wallet, "bob").split(".")[1]}`)).toBeNull();
+});
+
+it("treats the generated wallet-xxxxxxxx label as no name", () => {
+  expect(isAutoLabel(null)).toBe(true);
+  expect(isAutoLabel("wallet-9e15a220")).toBe(true);
+  expect(isAutoLabel("alice")).toBe(false);
 });
