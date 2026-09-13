@@ -25,3 +25,4 @@ coverage/
 # Misc
 .DS_Store
 *.log
+.e2e-run*/
