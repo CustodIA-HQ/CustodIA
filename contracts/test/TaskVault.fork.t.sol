@@ -15,7 +15,16 @@ contract TaskVaultForkTest is Test {
         address owner = makeAddr("owner");
         uint256 execKey = 0xE1;
         uint256 policyKey = 0xA2;
-        TaskVault vault = new TaskVault(owner, vm.addr(execKey), vm.addr(policyKey), ROUTER, WETH, USDC, 500);
+        TaskVault vault = new TaskVault(
+            owner,
+            vm.addr(execKey),
+            vm.addr(policyKey),
+            ROUTER,
+            WETH,
+            USDC,
+            500,
+            TaskVault.Install(bytes32(0), 0, 0, 0, TaskVault.Cap(0, 0), TaskVault.Cap(0, 0))
+        );
         vm.deal(owner, 1 ether);
         vm.startPrank(owner);
         vault.deposit{value: 0.05 ether}();

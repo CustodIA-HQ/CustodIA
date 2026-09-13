@@ -26,13 +26,24 @@ contract TaskVaultTest is Test {
         usdc = new MockERC20("USD Coin", 6);
         router = new MockRouter(weth, usdc, RATE);
         vault = new TaskVault(
-            owner, exec, policy, ISwapRouter02(address(router)), IWETH(address(weth)), IERC20(address(usdc)), 500
+            owner,
+            exec,
+            policy,
+            ISwapRouter02(address(router)),
+            IWETH(address(weth)),
+            IERC20(address(usdc)),
+            500,
+            _noInstall()
         );
         vm.deal(owner, 10 ether);
         vm.prank(owner);
         vault.deposit{value: 1 ether}();
         _install(0.1 ether, 0.5 ether, 300e6, 1000e6, 60, uint64(block.timestamp + 1 days));
         vm.warp(block.timestamp + 1);
+    }
+
+    function _noInstall() internal pure returns (TaskVault.Install memory) {
+        return TaskVault.Install(bytes32(0), 0, 0, 0, TaskVault.Cap(0, 0), TaskVault.Cap(0, 0));
     }
 
     function _install(uint128 wTrade, uint128 wCum, uint128 uTrade, uint128 uCum, uint32 interval, uint64 expiry)
@@ -249,5 +260,32 @@ contract TaskVaultTest is Test {
         vm.prank(exec);
         vm.expectRevert("Too little received");
         vault.executeSwap(a, sig);
+    }
+}
+
+contract TaskVaultInstallAtDeployTest is Test {
+    function test_constructorInstallsMandateSoOneTxBindsIt() public {
+        MockWETH weth = new MockWETH();
+        MockERC20 usdc = new MockERC20("USD Coin", 6);
+        MockRouter router = new MockRouter(weth, usdc, 2500e6);
+        TaskVault vault = new TaskVault(
+            address(this),
+            address(1),
+            address(2),
+            ISwapRouter02(address(router)),
+            IWETH(address(weth)),
+            IERC20(address(usdc)),
+            500,
+            TaskVault.Install(
+                keccak256("m"), 1, uint64(block.timestamp + 1), 0, TaskVault.Cap(1, 2), TaskVault.Cap(3, 4)
+            )
+        );
+        (bytes32 hash,,, uint32 interval, bool active) = vault.mandate();
+        assertEq(hash, keccak256("m"));
+        assertTrue(active);
+        assertEq(interval, 0);
+        (uint128 maxTrade, uint128 maxCum) = vault.caps(address(usdc));
+        assertEq(maxTrade, 3);
+        assertEq(maxCum, 4);
     }
 }

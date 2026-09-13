@@ -125,6 +125,17 @@ contract TaskVault {
         _;
     }
 
+    struct Install {
+        bytes32 hash;
+        uint64 version;
+        uint64 expiry;
+        uint32 minIntervalS;
+        Cap wethCap;
+        Cap usdcCap;
+    }
+
+    /// @param install Mandate to install at deployment (hash == 0 leaves the vault inactive). One owner
+    ///        transaction therefore both creates the vault and binds it to the signed mandate.
     constructor(
         address _owner,
         address _executionSigner,
@@ -132,7 +143,8 @@ contract TaskVault {
         ISwapRouter02 _router,
         IWETH _weth,
         IERC20 _usdc,
-        uint24 _poolFee
+        uint24 _poolFee,
+        Install memory install
     ) {
         owner = _owner;
         executionSigner = _executionSigner;
@@ -144,6 +156,11 @@ contract TaskVault {
         DOMAIN_SEPARATOR = keccak256(
             abi.encode(DOMAIN_TYPEHASH, keccak256("CustodIA TaskVault"), keccak256("1"), block.chainid, address(this))
         );
+        if (install.hash != bytes32(0)) {
+            _install(
+                install.hash, install.version, install.expiry, install.minIntervalS, install.wethCap, install.usdcCap
+            );
+        }
     }
 
     // ─── Owner: funding ───────────────────────────────────────────────────
@@ -186,6 +203,17 @@ contract TaskVault {
         Cap calldata wethCap,
         Cap calldata usdcCap
     ) external onlyOwner {
+        _install(hash, version, expiry, minIntervalS, wethCap, usdcCap);
+    }
+
+    function _install(
+        bytes32 hash,
+        uint64 version,
+        uint64 expiry,
+        uint32 minIntervalS,
+        Cap memory wethCap,
+        Cap memory usdcCap
+    ) private {
         mandate = Mandate({hash: hash, version: version, expiry: expiry, minIntervalS: minIntervalS, active: true});
         caps[address(weth)] = wethCap;
         caps[address(usdc)] = usdcCap;
