@@ -1,42 +1,116 @@
 import "../../env";
 
-import { createDb, tables } from "@custodia/db";
-import { Bot, webhookCallback } from "grammy";
+import { timingSafeEqual } from "node:crypto";
+import { createDb } from "@custodia/db";
+import { publicAppOrigin } from "@custodia/ens/paths";
+import { bindChannel, createRun, enqueueJob, findChannelBinding } from "@custodia/runtime";
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { readPairingCode } from "../channels/pairing";
+import { getAgentAddress } from "../identity";
 
-// Initialize the bot with the token from the environment
-const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN || "mock-token");
+const MAX_MESSAGE_LENGTH = 4_000;
 
-bot.on("message:text", async (ctx) => {
-  const telegramUserId = ctx.from.id.toString();
-  const db = createDb();
-
-  try {
-    const { eq, and } = await import("drizzle-orm");
-    const [binding] = await db
-      .select()
-      .from(tables.channelBindings)
-      .where(
-        and(
-          eq(tables.channelBindings.channel, "telegram"),
-          eq(tables.channelBindings.externalId, telegramUserId),
-        ),
-      )
-      .limit(1);
-
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-
-    if (!binding) {
-      await ctx.reply(`Wallet no vinculada. Por favor, conéctate aquí: ${baseUrl}/telegram`);
-      return;
-    }
-
-    // User is authenticated
-    await ctx.reply(`Reconocido: ${binding.ownerWallet}. Dirígete al chat web: ${baseUrl}/chat`);
-  } catch (err) {
-    console.error("[telegram] Failed to process message:", err);
-    await ctx.reply("An error occurred while processing your message.");
-  }
+// Only the fields the adapter reads; Telegram adds fields freely.
+const UpdateSchema = z.object({
+  update_id: z.number().int(),
+  message: z
+    .object({
+      chat: z.object({ id: z.number().int(), type: z.string() }),
+      from: z.object({ id: z.number().int() }).optional(),
+      text: z.string().optional(),
+    })
+    .optional(),
 });
 
-// Export the webhook handler for Next.js App Router using the standard HTTP adapter
-export const POST = webhookCallback(bot, "std/http");
+let db: ReturnType<typeof createDb> | undefined;
+const getDb = () => {
+  db ??= createDb();
+  return db;
+};
+
+/** Webhook reply: Telegram performs the sendMessage itself, so the handler makes no outbound call. */
+const reply = (chatId: number, text: string) =>
+  NextResponse.json({ method: "sendMessage", chat_id: chatId, text });
+
+const secretMatches = (provided: string | null, expected: string): boolean => {
+  const a = Buffer.from(provided ?? "");
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+};
+
+/**
+ * POST /api/telegram — Telegram webhook. The chat is transport: a paired
+ * Telegram user's text becomes a durable `chat.run` for their wallet, the
+ * worker runs it, and the answer comes back through the outbox. Unpaired
+ * users are sent to the web to prove their wallet first.
+ */
+export async function POST(request: Request) {
+  const expected = process.env.TELEGRAM_WEBHOOK_SECRET?.trim();
+  if (!expected) {
+    return NextResponse.json({ error: "TELEGRAM_WEBHOOK_SECRET is not set" }, { status: 503 });
+  }
+  if (!secretMatches(request.headers.get("x-telegram-bot-api-secret-token"), expected)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const parsed = UpdateSchema.safeParse(await request.json().catch(() => null));
+  const message = parsed.success ? parsed.data.message : undefined;
+  // Acknowledge everything we do not handle so Telegram stops redelivering it.
+  // Private chats only: an answer about a wallet must not land in a group.
+  if (!parsed.success || !message?.from || !message.text || message.chat.type !== "private") {
+    return new NextResponse(null, { status: 200 });
+  }
+
+  const chatId = message.chat.id;
+  const externalId = String(message.from.id);
+  const text = message.text.trim();
+  const pairUrl = `${publicAppOrigin()}/telegram`;
+
+  try {
+    const start = text.match(/^\/start(?:\s+(\S+))?$/);
+    if (start) {
+      const wallet = start[1] ? readPairingCode("telegram", start[1]) : null;
+      if (!wallet) {
+        return reply(
+          chatId,
+          `Connect your wallet first. Open ${pairUrl} and tap Connect Telegram.`,
+        );
+      }
+      await bindChannel(getDb(), { channel: "telegram", externalId, ownerWallet: wallet });
+      return reply(chatId, `Paired with ${wallet}. Ask about ETH or set a protection boundary.`);
+    }
+
+    const ownerWallet = await findChannelBinding(getDb(), "telegram", externalId);
+    if (!ownerWallet) {
+      return reply(chatId, `This chat is not paired with a wallet. Connect it at ${pairUrl}`);
+    }
+    if (text.length > MAX_MESSAGE_LENGTH) {
+      return reply(chatId, `Messages are limited to ${MAX_MESSAGE_LENGTH} characters.`);
+    }
+
+    // update_id is the idempotency key: a Telegram redelivery returns the same run.
+    const { runId, created } = await createRun(getDb(), {
+      conversationId: `telegram:${chatId}`,
+      ownerWallet,
+      kind: "chat",
+      clientRequestId: `telegram:${parsed.data.update_id}`,
+      input: {
+        messages: [{ role: "user", content: text }],
+        agent: getAgentAddress(),
+        reply: { channel: "telegram", chatId: String(chatId) },
+      },
+    });
+    if (!created) return new NextResponse(null, { status: 200 });
+    await enqueueJob(getDb(), {
+      kind: "chat.run",
+      payload: { runId },
+      dedupeKey: `chat.run:${runId}`,
+    });
+    return reply(chatId, "Working on it…");
+  } catch (error) {
+    // A non-2xx makes Telegram redeliver; run creation is idempotent on update_id.
+    console.error(`[telegram] ${error instanceof Error ? error.name : "Error"}`);
+    return NextResponse.json({ error: "Telegram update could not be processed" }, { status: 503 });
+  }
+}

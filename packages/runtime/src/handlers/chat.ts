@@ -4,6 +4,7 @@ import { PostgresMarketCache, tables } from "@custodia/db";
 import { getParentName, makeTaskName } from "@custodia/ens";
 import { templateForIntent } from "@custodia/schema";
 import { eq } from "drizzle-orm";
+import { queueChannelReply } from "../channels.js";
 import { storeProposal } from "../proposals.js";
 import type { JobHandler } from "../registry.js";
 import { appendEvent, completeRun, failRun, type RunStage } from "../runs.js";
@@ -25,13 +26,22 @@ interface ChatRunInput {
  * tool events into run_events, opens the task in `draft`, and records the
  * immutable proposal the mandate route will bind authorization to.
  */
-export const chatHandler: JobHandler = async ({ db, job, heartbeat }) => {
-  const { runId } = job.payload as { runId: string };
+export const chatHandler: JobHandler = async (ctx) => {
+  const { runId } = ctx.job.payload as { runId: string };
+  // Only the delivery that finished the run answers the originating channel.
+  if (await runChat(ctx, runId)) await queueChannelReply(ctx.db, runId);
+};
+
+/** Returns true when this call moved the run to done or failed. */
+async function runChat(
+  { db, heartbeat }: Parameters<JobHandler>[0],
+  runId: string,
+): Promise<boolean> {
   const [run] = await db.select().from(tables.runs).where(eq(tables.runs.id, runId)).limit(1);
   if (!run) throw new Error(`run ${runId} not found`);
   // Duplicate delivery or a retried job: an agent run is never repeated —
   // it costs money and is not idempotent.
-  if (run.status === "done" || run.status === "failed") return;
+  if (run.status === "done" || run.status === "failed") return false;
   await db.update(tables.runs).set({ status: "running" }).where(eq(tables.runs.id, runId));
 
   const input = run.input as ChatRunInput;
@@ -62,7 +72,7 @@ export const chatHandler: JobHandler = async ({ db, job, heartbeat }) => {
           "That request is outside this testnet build. Mainnet, bridges, and unbounded execution are not available. Futures stay simulated and only inside a signed envelope.",
         receipts: [],
       });
-      return;
+      return true;
     }
     const result = await runAgent({
       messages: input.messages,
@@ -94,7 +104,7 @@ export const chatHandler: JobHandler = async ({ db, job, heartbeat }) => {
         rationale: result.rationale,
         receipts: result.receipts,
       });
-      return;
+      return true;
     }
 
     const taskId = randomBytes(4).toString("hex");
@@ -143,4 +153,5 @@ export const chatHandler: JobHandler = async ({ db, job, heartbeat }) => {
     // starts (run not found) still throw above and are retried.
     await failRun(db, runId, err instanceof Error ? err.message : String(err));
   }
-};
+  return true;
+}

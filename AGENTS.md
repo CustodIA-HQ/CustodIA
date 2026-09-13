@@ -45,5 +45,5 @@ Targeted tests: `pnpm --filter @custodia/<pkg> exec vitest run <file>`. Lint: `p
 - UISpec: Zod discriminated union; agent chooses WHAT; `packages/agent/src/compose.ts` / `clipper.ts` choose HOW.
 - Graph product path is Messari Uniswap V3 (`packages/graph`). Venues in `packages/graph/src/pools.ts`; other pairs are derived in `cross.ts`. Do not rank pools by subgraph TVL.
 - Generated UX lab: `/ux`. Market: `GET /api/market`.
-- Telegram is not in this build (`PRODUCT.md`).
+- Telegram and WhatsApp are transport only: `POST /api/telegram` / `POST /api/whatsapp` queue a `chat.run`, the worker answers through `outbox` (`packages/runtime/src/channels.ts`). Signing stays on the web (`PRODUCT.md`).
 - Do not commit unless asked.
