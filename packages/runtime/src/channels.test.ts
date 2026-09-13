@@ -10,6 +10,8 @@ import {
   readWalletViewToken,
   sendWhatsAppMessage,
   summarizeRunEvents,
+  telegramKeyboard,
+  whatsAppMessageBody,
 } from "./channels.js";
 import { notifyHandler } from "./handlers/notify.js";
 import { leaseJob } from "./jobs.js";
@@ -297,4 +299,54 @@ it("alerts the owner's Telegram once when WhatsApp cannot deliver (24 h window)"
   expect(
     await ctx.db.select().from(tables.outbox).where(eq(tables.outbox.target, "4242")),
   ).toHaveLength(1);
+});
+
+it("renders buttons as a Telegram inline keyboard and WhatsApp interactive messages", () => {
+  const yesNo = [
+    { id: "yes", label: "Yes, do it" },
+    { id: "no", label: "No, skip" },
+  ];
+  expect(telegramKeyboard(yesNo)).toEqual({
+    inline_keyboard: [
+      [
+        { text: "Yes, do it", callback_data: "yes" },
+        { text: "No, skip", callback_data: "no" },
+      ],
+    ],
+  });
+  expect(telegramKeyboard([{ label: "Open graph", url: "https://a/b" }])).toEqual({
+    inline_keyboard: [[{ text: "Open graph", url: "https://a/b" }]],
+  });
+  expect(telegramKeyboard([])).toBeUndefined();
+
+  expect(whatsAppMessageBody("1", "Proposal?", yesNo)).toMatchObject({
+    type: "interactive",
+    interactive: {
+      type: "button",
+      body: { text: "Proposal?" },
+      action: {
+        buttons: [
+          { type: "reply", reply: { id: "yes", title: "Yes, do it" } },
+          { type: "reply", reply: { id: "no", title: "No, skip" } },
+        ],
+      },
+    },
+  });
+  expect(
+    whatsAppMessageBody("1", "Done.", [{ label: "View transaction", url: "https://x/tx" }]),
+  ).toMatchObject({
+    type: "interactive",
+    interactive: {
+      type: "cta_url",
+      action: { parameters: { display_text: "View transaction", url: "https://x/tx" } },
+    },
+  });
+  expect(whatsAppMessageBody("1", "plain", [])).toEqual({
+    messaging_product: "whatsapp",
+    to: "1",
+    type: "text",
+    text: { body: "plain" },
+  });
+  // Bodies over the interactive limit fall back to text so nothing is lost.
+  expect(whatsAppMessageBody("1", "x".repeat(1_100), yesNo).type).toBe("text");
 });

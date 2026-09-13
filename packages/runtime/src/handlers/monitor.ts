@@ -223,6 +223,10 @@ export const monitorHandler: JobHandler = async ({ db }) => {
           db,
           task.userWallet,
           `Agent proposal — ${decision.reason}.\n\nReply YES to swap ${o.amount} ${o.sell} → ${o.buy} inside your limits, or NO to skip. The proposal expires in 30 minutes.`,
+          [
+            { id: "yes", label: "Yes, do it" },
+            { id: "no", label: "No, skip" },
+          ],
         );
       }
     } catch (error) {

@@ -1,13 +1,18 @@
 import { tables } from "@custodia/db";
 import { publicAppOrigin } from "@custodia/ens/paths";
 import { and, eq, ne } from "drizzle-orm";
-import { queueChannelMessage, sendTelegramMessage, sendWhatsAppMessage } from "../channels.js";
+import {
+  type ChannelButton,
+  queueChannelMessage,
+  sendTelegramMessage,
+  sendWhatsAppMessage,
+} from "../channels.js";
 import type { JobHandler } from "../registry.js";
 import type { AnyDb } from "../runs.js";
 
 const MAX_DELIVERY_ATTEMPTS = 5;
 
-type OutboxPayload = { text?: string; alerted?: boolean };
+type OutboxPayload = { text?: string; alerted?: boolean; buttons?: ChannelButton[] };
 
 /**
  * WhatsApp refuses free-form text once 24 h have passed since the user's last
@@ -67,8 +72,9 @@ export const notifyHandler: JobHandler = async ({ db }) => {
     const payload = (row.payload ?? {}) as OutboxPayload;
     try {
       const text = payload.text ?? "";
-      if (row.channel === "telegram") await sendTelegramMessage(row.target, text);
-      if (row.channel === "whatsapp") await sendWhatsAppMessage(row.target, text);
+      const buttons = payload.buttons ?? [];
+      if (row.channel === "telegram") await sendTelegramMessage(row.target, text, buttons);
+      if (row.channel === "whatsapp") await sendWhatsAppMessage(row.target, text, buttons);
       await db
         .update(tables.outbox)
         .set({ status: "sent", sentAt: new Date(), attempts })

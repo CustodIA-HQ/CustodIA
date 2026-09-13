@@ -12,6 +12,18 @@ import { getStoredUserLabel } from "./users.js";
 /** Where a run's answer goes when it did not start in web chat. Stored on `runs.input.reply`. */
 export type ChannelReply = { channel: "telegram" | "whatsapp"; chatId: string };
 
+/**
+ * A button under a chat message. `url` opens a page; `id` is sent back as if
+ * the user typed it (Telegram callback / WhatsApp reply button), so every
+ * button has a typed equivalent and the text alone stays sufficient.
+ */
+export type ChannelButton = { label: string; url?: string; id?: string };
+
+/** Telegram: 64-byte callback data. WhatsApp: 3 reply buttons of ≤20 chars, or one URL button. */
+const WHATSAPP_MAX_BUTTONS = 3;
+const WHATSAPP_MAX_LABEL = 20;
+const WHATSAPP_INTERACTIVE_MAX_BODY = 1_024;
+
 const TELEGRAM_MAX_TEXT = 4_096;
 const WHATSAPP_MAX_TEXT = 4_096;
 /** Meta Graph API version for the WhatsApp Cloud API. */
@@ -220,7 +232,16 @@ export async function queueChannelReply(db: AnyDb, runId: string): Promise<void>
   if (summary.snapshot && (await needsName(db, run.ownerWallet as `0x${string}`))) {
     text += `\n\n${CLAIM_NUDGE}`;
   }
-  await queueChannelMessage(db, target, text);
+  const output = run.output as { taskId?: string | null } | null;
+  const buttons: ChannelButton[] = [];
+  if (graphUrl) buttons.push({ label: "Open graph", url: graphUrl });
+  if (output?.taskId) {
+    buttons.push({
+      label: "Review & sign",
+      url: `${publicAppOrigin()}/task/${encodeURIComponent(output.taskId)}`,
+    });
+  }
+  await queueChannelMessage(db, target, text, buttons);
 }
 
 /** Queue text for the channel a run came from; no-op for web runs. */
@@ -228,21 +249,27 @@ export async function queueChannelMessageForRun(
   db: AnyDb,
   runId: string,
   text: string,
+  buttons: ChannelButton[] = [],
 ): Promise<void> {
   const run = await loadRun(db, runId);
   const target = run ? replyTarget(run.input) : null;
-  if (target) await queueChannelMessage(db, target, text);
+  if (target) await queueChannelMessage(db, target, text, buttons);
 }
 
 /** Queue text for every chat the owner paired (agent-initiated events have no originating run). */
-export async function notifyOwner(db: AnyDb, ownerWallet: string, text: string): Promise<void> {
+export async function notifyOwner(
+  db: AnyDb,
+  ownerWallet: string,
+  text: string,
+  buttons: ChannelButton[] = [],
+): Promise<void> {
   const bindings = await db
     .select()
     .from(tables.channelBindings)
     .where(eq(tables.channelBindings.ownerWallet, ownerWallet));
   for (const b of bindings) {
     if (b.channel === "telegram" || b.channel === "whatsapp") {
-      await queueChannelMessage(db, { channel: b.channel, chatId: b.externalId }, text);
+      await queueChannelMessage(db, { channel: b.channel, chatId: b.externalId }, text, buttons);
     }
   }
 }
@@ -252,22 +279,46 @@ export async function queueChannelMessage(
   db: AnyDb,
   target: ChannelReply,
   text: string,
+  buttons: ChannelButton[] = [],
 ): Promise<void> {
   await db.insert(tables.outbox).values({
     channel: target.channel,
     target: target.chatId,
-    payload: { text },
+    payload: buttons.length ? { text, buttons } : { text },
   });
   await enqueueJob(db, { kind: "notify.drain", payload: {}, dedupeKey: "notify.drain" });
 }
 
-export async function sendTelegramMessage(chatId: string, text: string): Promise<void> {
+/** Inline keyboard: URL buttons open pages, callback buttons send their id back to the webhook. */
+export const telegramKeyboard = (buttons: ChannelButton[]) =>
+  buttons.length
+    ? {
+        inline_keyboard: [
+          buttons.map((b) =>
+            b.url
+              ? { text: b.label, url: b.url }
+              : { text: b.label, callback_data: (b.id ?? b.label).slice(0, 64) },
+          ),
+        ],
+      }
+    : undefined;
+
+export async function sendTelegramMessage(
+  chatId: string,
+  text: string,
+  buttons: ChannelButton[] = [],
+): Promise<void> {
   const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
   if (!token) throw new NotImplementedError("TELEGRAM_BOT_TOKEN (Telegram delivery)");
+  const reply_markup = telegramKeyboard(buttons);
   const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text: text.slice(0, TELEGRAM_MAX_TEXT) }),
+    body: JSON.stringify({
+      chat_id: chatId,
+      text: text.slice(0, TELEGRAM_MAX_TEXT),
+      ...(reply_markup ? { reply_markup } : {}),
+    }),
   });
   const body = (await response.json().catch(() => null)) as { ok?: boolean; description?: string };
   if (!response.ok || body?.ok !== true) {
@@ -276,7 +327,60 @@ export async function sendTelegramMessage(chatId: string, text: string): Promise
 }
 
 /** Free-form text is allowed inside the 24 h window a user message opens — every reply here answers one. */
-export async function sendWhatsAppMessage(to: string, text: string): Promise<void> {
+/**
+ * The Cloud API message body: interactive reply buttons (≤3), a single URL
+ * button (cta_url), or plain text. Buttons that do not fit the limits are
+ * dropped — the text always carries the same information.
+ */
+export const whatsAppMessageBody = (to: string, text: string, buttons: ChannelButton[]) => {
+  const body = text.slice(0, WHATSAPP_MAX_TEXT);
+  const base = { messaging_product: "whatsapp", to };
+  if (!buttons.length || body.length > WHATSAPP_INTERACTIVE_MAX_BODY) {
+    return { ...base, type: "text", text: { body } };
+  }
+  const replies = buttons.filter((b) => !b.url).slice(0, WHATSAPP_MAX_BUTTONS);
+  if (replies.length) {
+    return {
+      ...base,
+      type: "interactive",
+      interactive: {
+        type: "button",
+        body: { text: body },
+        action: {
+          buttons: replies.map((b) => ({
+            type: "reply",
+            reply: {
+              id: (b.id ?? b.label).slice(0, 256),
+              title: b.label.slice(0, WHATSAPP_MAX_LABEL),
+            },
+          })),
+        },
+      },
+    };
+  }
+  const link = buttons.find((b) => b.url);
+  if (link?.url) {
+    return {
+      ...base,
+      type: "interactive",
+      interactive: {
+        type: "cta_url",
+        body: { text: body },
+        action: {
+          name: "cta_url",
+          parameters: { display_text: link.label.slice(0, WHATSAPP_MAX_LABEL), url: link.url },
+        },
+      },
+    };
+  }
+  return { ...base, type: "text", text: { body } };
+};
+
+export async function sendWhatsAppMessage(
+  to: string,
+  text: string,
+  buttons: ChannelButton[] = [],
+): Promise<void> {
   const token = process.env.WHATSAPP_ACCESS_TOKEN?.trim();
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID?.trim();
   if (!token || !phoneNumberId) {
@@ -289,12 +393,7 @@ export async function sendWhatsAppMessage(to: string, text: string): Promise<voi
     {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
-      body: JSON.stringify({
-        messaging_product: "whatsapp",
-        to,
-        type: "text",
-        text: { body: text.slice(0, WHATSAPP_MAX_TEXT) },
-      }),
+      body: JSON.stringify(whatsAppMessageBody(to, text, buttons)),
     },
   );
   if (!response.ok) {

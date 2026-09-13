@@ -6,10 +6,12 @@ import { createDb } from "@custodia/db";
 import { publicAppOrigin } from "@custodia/ens/paths";
 import {
   bindChannel,
+  type ChannelButton,
   createRun,
   describeIdentity,
   enqueueJob,
   findChannelBinding,
+  telegramKeyboard,
 } from "@custodia/runtime";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -28,6 +30,15 @@ const UpdateSchema = z.object({
       text: z.string().optional(),
     })
     .optional(),
+  // A pressed inline button: its callback_data is handled exactly like typed text.
+  callback_query: z
+    .object({
+      id: z.string(),
+      from: z.object({ id: z.number().int(), language_code: z.string().optional() }),
+      message: z.object({ chat: z.object({ id: z.number().int(), type: z.string() }) }).optional(),
+      data: z.string().optional(),
+    })
+    .optional(),
 });
 
 let db: ReturnType<typeof createDb> | undefined;
@@ -37,8 +48,15 @@ const getDb = () => {
 };
 
 /** Webhook reply: Telegram performs the sendMessage itself, so the handler makes no outbound call. */
-const reply = (chatId: number, text: string) =>
-  NextResponse.json({ method: "sendMessage", chat_id: chatId, text });
+const reply = (chatId: number, text: string, buttons: ChannelButton[] = []) => {
+  const reply_markup = telegramKeyboard(buttons);
+  return NextResponse.json({
+    method: "sendMessage",
+    chat_id: chatId,
+    text,
+    ...(reply_markup ? { reply_markup } : {}),
+  });
+};
 
 const secretMatches = (provided: string | null, expected: string): boolean => {
   const a = Buffer.from(provided ?? "");
@@ -62,6 +80,37 @@ export async function POST(request: Request) {
   }
 
   const parsed = UpdateSchema.safeParse(await request.json().catch(() => null));
+  // A button press becomes a message from the same user in the same chat; Telegram is
+  // told the press was received (answerCallbackQuery) and the answer comes via the outbox.
+  const callback = parsed.success ? parsed.data.callback_query : undefined;
+  if (callback?.message && callback.data && callback.message.chat.type === "private") {
+    try {
+      const ownerWallet = await findChannelBinding(getDb(), "telegram", String(callback.from.id));
+      if (ownerWallet) {
+        const { runId, created } = await createRun(getDb(), {
+          conversationId: `telegram:${callback.message.chat.id}`,
+          ownerWallet,
+          kind: "chat",
+          clientRequestId: `telegram:cb:${callback.id}`,
+          input: {
+            messages: [{ role: "user", content: callback.data }],
+            agent: getAgentAddress(),
+            reply: { channel: "telegram", chatId: String(callback.message.chat.id) },
+          },
+        });
+        if (created) {
+          await enqueueJob(getDb(), {
+            kind: "chat.run",
+            payload: { runId },
+            dedupeKey: `chat.run:${runId}`,
+          });
+        }
+      }
+    } catch (error) {
+      console.error(`[telegram] ${error instanceof Error ? error.name : "Error"}`);
+    }
+    return NextResponse.json({ method: "answerCallbackQuery", callback_query_id: callback.id });
+  }
   const message = parsed.success ? parsed.data.message : undefined;
   // Acknowledge everything we do not handle so Telegram stops redelivering it.
   // Private chats only: an answer about a wallet must not land in a group.
@@ -75,15 +124,14 @@ export async function POST(request: Request) {
 
   try {
     const language = message.from.language_code?.slice(0, 2);
-    const verify = async () =>
-      reply(
+    const verify = async () => {
+      const verifyLink = connectUrl("telegram", externalId, publicAppOrigin());
+      return reply(
         chatId,
-        await generateWelcome({
-          surface: "telegram",
-          language,
-          paired: { verifyLink: connectUrl("telegram", externalId, publicAppOrigin()) },
-        }),
+        await generateWelcome({ surface: "telegram", language, paired: { verifyLink } }),
+        [{ label: "Verify wallet", url: verifyLink }],
       );
+    };
     const paired = async (wallet: string) =>
       reply(
         chatId,

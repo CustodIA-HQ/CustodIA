@@ -20,6 +20,7 @@ vi.mock("@custodia/agent", async (orig) => {
   };
 });
 vi.mock("@custodia/runtime", () => ({
+  telegramKeyboard: () => undefined,
   createRun: mocks.createRun,
   enqueueJob: mocks.enqueueJob,
   findChannelBinding: mocks.findChannelBinding,
@@ -143,4 +144,38 @@ it("ignores group chats", async () => {
   const response = await update("guard my eth", { chatType: "group" });
   expect(response.status).toBe(200);
   expect(mocks.findChannelBinding).not.toHaveBeenCalled();
+});
+
+it("treats a pressed inline button like a typed message and acknowledges the press", async () => {
+  mocks.findChannelBinding.mockResolvedValueOnce(wallet);
+  const response = await POST(
+    new Request("https://app.test/api/telegram", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-telegram-bot-api-secret-token": "hook-secret",
+      },
+      body: JSON.stringify({
+        update_id: 101,
+        callback_query: {
+          id: "cb-1",
+          from: { id: 777 },
+          message: { chat: { id: 555, type: "private" } },
+          data: "yes",
+        },
+      }),
+    }),
+  );
+  expect(await response.json()).toEqual({
+    method: "answerCallbackQuery",
+    callback_query_id: "cb-1",
+  });
+  expect(mocks.createRun).toHaveBeenCalledWith(
+    {},
+    expect.objectContaining({
+      clientRequestId: "telegram:cb:cb-1",
+      input: expect.objectContaining({ messages: [{ role: "user", content: "yes" }] }),
+    }),
+  );
+  expect(mocks.enqueueJob).toHaveBeenCalled();
 });

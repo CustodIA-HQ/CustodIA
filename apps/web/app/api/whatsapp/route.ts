@@ -33,6 +33,13 @@ const WebhookSchema = z.object({
                   id: z.string(),
                   type: z.string(),
                   text: z.object({ body: z.string() }).optional(),
+                  // A tapped reply button: its id is handled exactly like typed text.
+                  interactive: z
+                    .object({
+                      type: z.string(),
+                      button_reply: z.object({ id: z.string(), title: z.string() }).optional(),
+                    })
+                    .optional(),
                 }),
               )
               .optional(),
@@ -102,14 +109,18 @@ export async function POST(request: Request) {
 
   try {
     for (const message of messages) {
-      if (message.type !== "text" || !message.text) continue;
+      const typed =
+        message.type === "text"
+          ? message.text?.body
+          : message.type === "interactive"
+            ? message.interactive?.button_reply?.id
+            : undefined;
+      if (!typed) continue;
       const target = { channel: "whatsapp" as const, chatId: message.from };
-      const verifyText = () =>
-        generateWelcome({
-          surface: "whatsapp",
-          paired: { verifyLink: connectUrl("whatsapp", message.from, publicAppOrigin()) },
-        });
-      const text = message.text.body.trim();
+      const verifyLink = connectUrl("whatsapp", message.from, publicAppOrigin());
+      const verifyButtons = [{ label: "Verify wallet", url: verifyLink }];
+      const verifyText = () => generateWelcome({ surface: "whatsapp", paired: { verifyLink } });
+      const text = typed.trim();
 
       const connect = text.match(/^connect\s+(\S+)$/i);
       if (connect?.[1]) {
@@ -119,6 +130,7 @@ export async function POST(request: Request) {
             getDb(),
             target,
             `That pairing code is invalid or expired. ${await verifyText()}`,
+            verifyButtons,
           );
           continue;
         }
@@ -137,7 +149,7 @@ export async function POST(request: Request) {
 
       const ownerWallet = await findChannelBinding(getDb(), "whatsapp", message.from);
       if (!ownerWallet) {
-        await queueChannelMessage(getDb(), target, await verifyText());
+        await queueChannelMessage(getDb(), target, await verifyText(), verifyButtons);
         continue;
       }
       if (text.length > MAX_MESSAGE_LENGTH) {

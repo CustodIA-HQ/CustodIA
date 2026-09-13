@@ -107,6 +107,7 @@ it("sends an unpaired number to connect its wallet through the outbox", async ()
     {},
     target,
     expect.stringContaining("https://app.test/connect?t="),
+    [expect.objectContaining({ label: "Verify wallet" })],
   );
   const text = String((mocks.queueChannelMessage.mock.calls[0] as unknown[])[2]);
   const token = new URL(text.match(/https:\/\/\S+/)?.[0] ?? "").searchParams.get("t") ?? "";
@@ -148,4 +149,51 @@ it("queues a paired number's message as a chat run", async () => {
     { kind: "chat.run", payload: { runId: "run-1" }, dedupeKey: "chat.run:run-1" },
   );
   expect(mocks.queueChannelMessage).toHaveBeenCalledWith({}, target, "Working on it…");
+});
+
+it("treats a tapped reply button like typed text", async () => {
+  mocks.findChannelBinding.mockResolvedValueOnce(wallet);
+  const raw = JSON.stringify({
+    object: "whatsapp_business_account",
+    entry: [
+      {
+        id: "waba",
+        changes: [
+          {
+            field: "messages",
+            value: {
+              messaging_product: "whatsapp",
+              messages: [
+                {
+                  from,
+                  id: "wamid.btn",
+                  type: "interactive",
+                  interactive: {
+                    type: "button_reply",
+                    button_reply: { id: "no", title: "No, skip" },
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    ],
+  });
+  const signature = `sha256=${createHmac("sha256", "app-secret").update(raw).digest("hex")}`;
+  const response = await POST(
+    new Request("https://app.test/api/whatsapp", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-hub-signature-256": signature },
+      body: raw,
+    }),
+  );
+  expect(response.status).toBe(200);
+  expect(mocks.createRun).toHaveBeenCalledWith(
+    {},
+    expect.objectContaining({
+      clientRequestId: "whatsapp:wamid.btn",
+      input: expect.objectContaining({ messages: [{ role: "user", content: "no" }] }),
+    }),
+  );
 });

@@ -28,7 +28,7 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { sepolia } from "viem/chains";
-import { notifyOwner, queueChannelMessageForRun } from "../channels.js";
+import { type ChannelButton, notifyOwner, queueChannelMessageForRun } from "../channels.js";
 import type { JobHandler } from "../registry.js";
 import { loadLatestMandate, loadTask } from "../tasks.js";
 
@@ -105,10 +105,10 @@ export const executeHandler: JobHandler = async ({ db, job, heartbeat }) => {
   // A chat order answers in its chat; an agent-initiated action reaches every chat the owner paired.
   const agentInitiated = action.reason?.startsWith("agent:") ?? false;
   const prefix = agentInitiated ? `Agent action — ${action.reason?.slice(7)}.\n\n` : "";
-  const notify = (text: string) =>
+  const notify = (text: string, buttons: ChannelButton[] = []) =>
     action.runId
-      ? queueChannelMessageForRun(db, action.runId, prefix + text)
-      : notifyOwner(db, task.userWallet, prefix + text);
+      ? queueChannelMessageForRun(db, action.runId, prefix + text, buttons)
+      : notifyOwner(db, task.userWallet, prefix + text, buttons);
   const refuse = async (reason: string) => {
     await update({ status: "refused", reason });
     await db.insert(tables.outbox).values({
@@ -275,6 +275,7 @@ export const executeHandler: JobHandler = async ({ db, job, heartbeat }) => {
     });
     await notify(
       `Done: swapped ${formatAmount(actionRow.tokenIn as Address, BigInt(actionRow.amountIn))} → ${formatAmount(actionRow.tokenOut as Address, amountOut)}.\nVault now: ${formatAmount(SEPOLIA.weth, after.weth)} · ${formatAmount(SEPOLIA.usdc, after.usdc)}.\nTx: ${etherscanTx(hash)}`,
+      [{ label: "View transaction", url: etherscanTx(hash) }],
     );
   }
 };
