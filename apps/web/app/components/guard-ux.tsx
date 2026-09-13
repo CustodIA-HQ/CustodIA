@@ -1,8 +1,7 @@
 import { loadEnsConfig, resolveTask } from "@custodia/ens";
-import type { MarketContext } from "@custodia/schema";
 import { MarketPairSchema, UISpecSchema } from "@custodia/schema";
 import { z } from "zod";
-import { GeneratedUx } from "./generated-ux";
+import { GeneratedUx, type UxMarket } from "./generated-ux";
 
 const ChartRecordSchema = z
   .object({
@@ -41,21 +40,19 @@ export async function GuardUx({
   const ui = records["xyz.custodia.ui"]
     ? UISpecSchema.safeParse(parseRecord(records["xyz.custodia.ui"]))
     : null;
-  const market: MarketContext | undefined = chart.success
-    ? {
-        pair: chart.data.pair,
-        base: chart.data.pair.split("/")[0] ?? "ETH",
-        quote: chart.data.pair.split("/")[1] ?? "USDC",
-        poolId: "",
-        poolName: "",
-        priceUsd: chart.data.points.at(-1)?.close ?? 0,
-        realizedVol24hPct: 0,
-        tvlUsd: 0,
-        hourly: chart.data.points,
-        block: 0,
-        fetchedAt: chart.data.fetchedAt,
-      }
-    : undefined;
+  // The ENS chart record carries closes only — pool, TVL, vol and block are not
+  // on-chain, so they are not fabricated here. Price is the last published close.
+  const lastClose = chart.success ? chart.data.points.at(-1)?.close : undefined;
+  const market: UxMarket | undefined =
+    chart.success && lastClose
+      ? {
+          pair: chart.data.pair,
+          base: chart.data.pair.split("/")[0] ?? "ETH",
+          quote: chart.data.pair.split("/")[1] ?? "USDC",
+          priceUsd: lastClose,
+          hourly: chart.data.points,
+        }
+      : undefined;
 
   return (
     <>

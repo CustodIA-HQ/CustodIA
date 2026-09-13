@@ -33,6 +33,14 @@ const holdingsUsd = (portfolio: ComposePortfolio, priceUsd: number) => {
   return { ethUsd: eth, usdcUsd: usdc, totalUsd: eth + usdc };
 };
 
+/** Fill against live pool depth: slippage scales with notional / Uniswap V3 TVL, never a fixed bps. */
+const poolFill = (market: MarketContext, side: "buy" | "sell", notionalUsd: number) => {
+  const slippageBps = round2(Math.max(1, (notionalUsd / Math.max(market.tvlUsd, 1)) * 10_000));
+  const direction = side === "buy" ? 1 : -1;
+  const expectedPriceUsd = round2(market.priceUsd * (1 + (direction * slippageBps) / 10_000));
+  return { slippageBps, expectedPriceUsd };
+};
+
 const parseDeductiblePct = (message: string, fallback: number): number => {
   const match = message.match(/(\d+(?:\.\d+)?)\s*%/);
   const raw = Number(match?.[1]);
@@ -145,9 +153,17 @@ function composePortfolio(input: ComposeInput): UISpec | null {
   ]);
 }
 
-function composeProtection(input: ComposeInput): UISpec {
+function composeProtection(input: ComposeInput): UISpec | null {
   const { totalUsd } = holdingsUsd(input.portfolio, input.market.priceUsd);
-  const notionalUsd = Math.max(totalUsd, 1);
+  // An empty testnet wallet is sized on the paid risk envelope, not a $1
+  // placeholder that flattens the payoff curve. With neither, there is no
+  // honest basis for a simulation.
+  const notionalUsd = totalUsd > 0 ? totalUsd : (input.risk?.maxTradeEnvelopeUsd ?? 0);
+  if (notionalUsd <= 0) return null;
+  const basis =
+    totalUsd > 0
+      ? "Sized on observed wallet holdings."
+      : `No ETH/USDC observed in this wallet; simulated on the $${Math.round(notionalUsd)} risk envelope.`;
   const fromRisk = input.risk ? Math.max(5, Math.round(input.risk.drawdownRange[1])) : 15;
   const deductiblePct = parseDeductiblePct(input.message, fromRisk);
   const durationDays = 30;
@@ -157,9 +173,10 @@ function composeProtection(input: ComposeInput): UISpec {
   );
   const spotUsd = input.market.priceUsd;
   const strikeUsd = round2(spotUsd * (1 - deductiblePct / 100));
-  const rationale =
+  const rationale = `${
     input.risk?.explanation ??
-    `Protection floor ${deductiblePct}% below live ${input.market.pair}, duration ${durationDays} days, budget $${budgetUsd}.`;
+    `Protection floor ${deductiblePct}% below live ${input.market.pair}, duration ${durationDays} days, budget $${budgetUsd}.`
+  } ${basis}`;
   return spec("configure_position_protection", rationale, [
     { type: "price_chart", pair: input.market.pair, range: "24h" },
     {
@@ -240,12 +257,7 @@ function composeCollateral(input: ComposeInput): UISpec {
 function composeSpot(input: ComposeInput): UISpec {
   const envelope = input.risk?.maxTradeEnvelopeUsd ?? Math.min(500, input.market.tvlUsd * 0.02);
   const parsed = parseNotionalUsd(input.message, Math.min(500, envelope));
-  const impact = envelope > 0 ? parsed.notionalUsd / Math.max(input.market.tvlUsd, 1) : 0;
-  const slippageBps = round2(Math.max(1, impact * 10_000));
-  const expectedPriceUsd = round2(
-    input.market.priceUsd *
-      (parsed.side === "buy" ? 1 + slippageBps / 10_000 : 1 - slippageBps / 10_000),
-  );
+  const { slippageBps, expectedPriceUsd } = poolFill(input.market, parsed.side, parsed.notionalUsd);
   const remaining = round2(envelope - parsed.notionalUsd);
   const inside = parsed.notionalUsd <= envelope;
   if (!inside) {
@@ -295,6 +307,8 @@ function composeSpot(input: ComposeInput): UISpec {
 
 function composeFutures(input: ComposeInput): UISpec {
   const envelope = input.risk?.maxTradeEnvelopeUsd ?? 100;
+  const notionalUsd = Math.min(100, envelope);
+  const { slippageBps, expectedPriceUsd } = poolFill(input.market, "buy", notionalUsd);
   return spec(
     "confirm_futures_execution",
     "Futures stay inside the same signed envelope. Leverage is off; a stop is mandatory. Simulated in this build.",
@@ -312,11 +326,11 @@ function composeFutures(input: ComposeInput): UISpec {
         side: "buy",
         base: "ETH",
         quote: "USDC",
-        notionalUsd: Math.min(100, envelope),
-        expectedPriceUsd: input.market.priceUsd,
-        slippageBps: 5,
+        notionalUsd,
+        expectedPriceUsd,
+        slippageBps,
         poolTvlUsd: input.market.tvlUsd,
-        remainingMandateUsd: round2(envelope - Math.min(100, envelope)),
+        remainingMandateUsd: round2(envelope - notionalUsd),
         verdict: "inside",
         reason:
           "Leverage disabled. A stop is required before any leveraged opening can be authorized.",

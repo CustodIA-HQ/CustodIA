@@ -78,3 +78,42 @@ it("builds a needs-human escalation card", () => {
   const spec = composeNeedsHuman("buy $50k ETH", "Outside envelope");
   expect(spec.intent).toBe("needs_human");
 });
+
+it("sizes protection for an empty wallet on the risk envelope, never a $1 placeholder", () => {
+  const spec = composeUISpec({
+    intent: "protect",
+    market,
+    risk,
+    portfolio: { eth: "0", usdc: "0" },
+    message: "Protect me if ETH drops more than 15%",
+  });
+  const payoff = spec?.components.find((c) => c.type === "payoff_chart");
+  expect(payoff?.type === "payoff_chart" && payoff.notionalUsd).toBe(400);
+  expect(payoff?.type === "payoff_chart" && payoff.spotUsd).toBe(2500);
+  expect(spec?.rationale).toContain("risk envelope");
+});
+
+it("composes no protection when there are neither holdings nor a risk envelope", () => {
+  const spec = composeUISpec({
+    intent: "protect",
+    market,
+    risk: null,
+    portfolio: { eth: "0", usdc: "0" },
+    message: "Protect me if ETH drops more than 15%",
+  });
+  expect(spec).toBeNull();
+});
+
+it("prices the futures preview from pool depth, not a fixed slippage", () => {
+  const spec = composeUISpec({
+    intent: "futures",
+    market,
+    risk,
+    portfolio: { eth: "1", usdc: "0" },
+    message: "Open a small ETH future",
+  });
+  const preview = spec?.components.find((c) => c.type === "execution_preview");
+  // $100 against $100k TVL = 10 bps; buy fills above spot.
+  expect(preview?.type === "execution_preview" && preview.slippageBps).toBe(10);
+  expect(preview?.type === "execution_preview" && preview.expectedPriceUsd).toBe(2502.5);
+});

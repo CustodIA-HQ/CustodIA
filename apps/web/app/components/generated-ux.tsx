@@ -5,13 +5,16 @@ import { BoundaryTile } from "./boundary-tile";
 import { HealthMeter } from "./health-meter";
 import { PayoffChart } from "./payoff-chart";
 
+/** The market fields the generated UX renders; ENS-sourced views carry only these. */
+export type UxMarket = Pick<MarketContext, "pair" | "base" | "quote" | "priceUsd" | "hourly">;
+
 export function GeneratedUx({
   spec,
   market,
   hideChart = false,
 }: {
   spec: UISpec;
-  market?: MarketContext | null;
+  market?: UxMarket | null;
   hideChart?: boolean;
 }) {
   const chart = spec.components.find((component) => component.type === "price_chart");
