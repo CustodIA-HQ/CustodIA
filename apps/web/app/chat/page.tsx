@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import ChatSection from "../chat-section";
 import { BackToHome } from "../components/back-to-home";
+import { Inbox } from "../components/inbox";
 import { SiteHeader } from "../components/site-header";
 import { SplashOrbit } from "../components/splash-orbit";
 
@@ -34,7 +35,11 @@ export default function ChatPage() {
         </div>
         <h1 className="chat-splash__title" aria-label={TITLE}>
           {TITLE.split("").map((char, index) => (
-            <span key={index} aria-hidden="true" style={{ animationDelay: `${0.35 + index * 0.06}s` }}>
+            <span
+              key={index}
+              aria-hidden="true"
+              style={{ animationDelay: `${0.35 + index * 0.06}s` }}
+            >
               {char}
             </span>
           ))}
@@ -57,7 +62,10 @@ export default function ChatPage() {
   return (
     <div className="chat-page" id="main">
       <SiteHeader active="chat" />
-      <ChatSection fullPage />
+      <div className="chat-page__layout">
+        <ChatSection fullPage />
+        <Inbox />
+      </div>
     </div>
   );
 }

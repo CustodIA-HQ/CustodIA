@@ -184,7 +184,8 @@ export async function resolveProposal(
   db: AnyDb,
   actionId: string,
   answer: "yes" | "no",
-  runId: string,
+  /** The chat run that answered; null from the web inbox (the result then goes to every paired chat). */
+  runId: string | null,
 ): Promise<void> {
   if (answer === "no") {
     await db
