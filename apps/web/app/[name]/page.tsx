@@ -44,6 +44,7 @@ export default async function OwnerDirectoryPage({
       <div className="guard-page__topbar">
         <Link href="/">CustodIA</Link>
         <Link href="/chat">Chat</Link>
+        <Link href={`/${encodeURIComponent(name)}/wallet`}>Wallet</Link>
         <span>ENS directory</span>
       </div>
       <section className="guard-page__hero">

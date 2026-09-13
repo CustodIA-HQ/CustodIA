@@ -234,6 +234,13 @@ it("sends a holdings answer with a graph link, or text only when asked", async (
   expect(readWalletViewToken(token, Date.now() + 25 * 60 * 60 * 1_000)).toBeNull();
   expect(readWalletViewToken(`${token}x`)).toBeNull();
 
+  // A claimed ENS name puts the graph under the owner's namespace instead of a token link.
+  await ctx.db.insert(tables.users).values({ wallet: "0xowner", ensLabel: "alice" });
+  vi.stubEnv("ENS_PARENT_NAME", "custodia.eth");
+  const named = await ask("show my portfolio", "g3");
+  expect(named.text).toContain("Graph: https://app.test/alice.custodia.eth/wallet");
+  await ctx.db.delete(tables.users).where(eq(tables.users.wallet, "0xowner"));
+
   const text = await ask("show my portfolio in text", "g2");
   expect(text.text).not.toContain("Graph:");
   expect(wantsTextOnly("mi portafolio en texto")).toBe(true);

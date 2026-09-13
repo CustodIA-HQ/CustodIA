@@ -1,10 +1,12 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { tables } from "@custodia/db";
-import { publicAppOrigin } from "@custodia/ens/paths";
+import { getParentName, makeOwnerName } from "@custodia/ens";
+import { ownerDirectoryPath, publicAppOrigin } from "@custodia/ens/paths";
 import { holdingsLine, NotImplementedError, wantsTextOnly } from "@custodia/schema";
 import { and, eq } from "drizzle-orm";
 import { enqueueJob } from "./jobs.js";
 import { type AnyDb, listEvents, loadRun } from "./runs.js";
+import { getStoredUserLabel } from "./users.js";
 
 /** Where a run's answer goes when it did not start in web chat. Stored on `runs.input.reply`. */
 export type ChannelReply = { channel: "telegram" | "whatsapp"; chatId: string };
@@ -183,6 +185,18 @@ export const channelReplyText = (
   return parts.join("\n\n");
 };
 
+/** `/<label>.custodia.eth/wallet` for a claimed name, else the signed `/wallet?t=…` link. */
+export async function walletViewUrl(
+  db: AnyDb,
+  ownerWallet: `0x${string}`,
+  runId: string,
+): Promise<string> {
+  const origin = publicAppOrigin();
+  const label = await getStoredUserLabel(db, ownerWallet).catch(() => null);
+  if (label) return `${origin}${ownerDirectoryPath(makeOwnerName(label, getParentName()))}/wallet`;
+  return `${origin}/wallet?t=${createWalletViewToken(runId)}`;
+}
+
 /** After a run finishes, queue its answer for the channel it came from (no-op for web). */
 export async function queueChannelReply(db: AnyDb, runId: string): Promise<void> {
   const run = await loadRun(db, runId);
@@ -194,10 +208,11 @@ export async function queueChannelReply(db: AnyDb, runId: string): Promise<void>
   ]
     .reverse()
     .find((m) => m.role === "user");
-  // A wallet snapshot gets the graph page unless the user asked for text.
+  // A wallet snapshot gets the graph page unless the user asked for text. Owners with a
+  // claimed name get it under their ENS namespace; otherwise a signed, expiring link.
   const graphUrl =
     summary.snapshot && !wantsTextOnly(lastUser?.content ?? "")
-      ? `${publicAppOrigin()}/wallet?t=${createWalletViewToken(runId)}`
+      ? await walletViewUrl(db, run.ownerWallet as `0x${string}`, runId)
       : null;
   await queueChannelMessage(
     db,
