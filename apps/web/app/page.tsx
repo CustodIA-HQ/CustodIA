@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { ChannelButtons } from "./components/channel-buttons";
 import { ChatEntrySection } from "./components/chat-entry-section";
-import { HeroMarketTrail } from "./components/hero-market-trail";
 import { HomeSampleProof } from "./components/home-sample-proof";
 import { HomeShell } from "./components/home-shell";
 import { SiteFooter, SiteHeader } from "./components/site-header";
@@ -41,8 +40,9 @@ export default function Home() {
               Sepolia and Hedera testnet. Test tokens have no value. Execution is simulated.
             </p>
           </div>
-          <aside className="home-hero__visual" aria-label="Abstract market path">
-            <HeroMarketTrail />
+          <aside className="home-hero__visual" aria-label="CustodIA Logo">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/brand/falcon-eye/falcon-eye-reference.png" alt="CustodIA Eye Logo" style={{ width: '100%', maxWidth: '600px', margin: '0 auto', display: 'block' }} />
           </aside>
         </section>
 
