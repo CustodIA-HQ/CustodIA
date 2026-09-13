@@ -7,6 +7,7 @@ import { publicAppOrigin } from "@custodia/ens/paths";
 import {
   bindChannel,
   createRun,
+  describeIdentity,
   enqueueJob,
   findChannelBinding,
   queueChannelMessage,
@@ -129,7 +130,7 @@ export async function POST(request: Request) {
         await queueChannelMessage(
           getDb(),
           target,
-          await generateWelcome({ surface: "whatsapp", paired: { wallet } }),
+          `${await generateWelcome({ surface: "whatsapp", paired: { wallet } })}\n\n${await describeIdentity(getDb() as never, wallet as `0x${string}`)}`,
         );
         continue;
       }

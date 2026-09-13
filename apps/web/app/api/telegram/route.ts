@@ -4,7 +4,13 @@ import { timingSafeEqual } from "node:crypto";
 import { generateWelcome } from "@custodia/agent";
 import { createDb } from "@custodia/db";
 import { publicAppOrigin } from "@custodia/ens/paths";
-import { bindChannel, createRun, enqueueJob, findChannelBinding } from "@custodia/runtime";
+import {
+  bindChannel,
+  createRun,
+  describeIdentity,
+  enqueueJob,
+  findChannelBinding,
+} from "@custodia/runtime";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { connectUrl, readPairingCode } from "../channels/pairing";
@@ -79,7 +85,10 @@ export async function POST(request: Request) {
         }),
       );
     const paired = async (wallet: string) =>
-      reply(chatId, await generateWelcome({ surface: "telegram", language, paired: { wallet } }));
+      reply(
+        chatId,
+        `${await generateWelcome({ surface: "telegram", language, paired: { wallet } })}\n\n${await describeIdentity(getDb() as never, wallet as `0x${string}`)}`,
+      );
 
     // A /start code from a signed web session still pairs directly.
     const start = text.match(/^\/start(?:\s+(\S+))?$/);

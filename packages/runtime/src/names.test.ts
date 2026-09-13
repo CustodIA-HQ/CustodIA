@@ -1,5 +1,11 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { createClaimToken, isAutoLabel, parseNameCommand, readClaimToken } from "./names.js";
+import {
+  createClaimToken,
+  isAutoLabel,
+  isGreeting,
+  parseNameCommand,
+  readClaimToken,
+} from "./names.js";
 
 afterEach(() => vi.unstubAllEnvs());
 
@@ -36,4 +42,10 @@ it("treats the generated wallet-xxxxxxxx label as no name", () => {
   expect(isAutoLabel(null)).toBe(true);
   expect(isAutoLabel("wallet-9e15a220")).toBe(true);
   expect(isAutoLabel("alice")).toBe(false);
+});
+
+it("recognises plain greetings only", () => {
+  for (const g of ["hi", "Hello!", "hey", "hola", "good morning"]) expect(isGreeting(g)).toBe(true);
+  for (const n of ["hi, sell 1 eth", "what is eth doing", "show my portfolio"])
+    expect(isGreeting(n)).toBe(false);
 });

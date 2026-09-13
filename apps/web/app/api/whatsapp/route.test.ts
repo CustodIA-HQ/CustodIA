@@ -26,6 +26,7 @@ vi.mock("@custodia/runtime", () => ({
   enqueueJob: mocks.enqueueJob,
   findChannelBinding: mocks.findChannelBinding,
   bindChannel: mocks.bindChannel,
+  describeIdentity: async () => "Your identity is alice.custodia.eth, minted on Sepolia ENS.",
   queueChannelMessage: mocks.queueChannelMessage,
 }));
 vi.mock("viem/accounts", () => ({ privateKeyToAccount: mocks.privateKeyToAccount }));

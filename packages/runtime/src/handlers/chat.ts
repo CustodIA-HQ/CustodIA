@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { classifyIntent, runAgent } from "@custodia/agent";
+import { classifyIntent, generateWelcome, runAgent } from "@custodia/agent";
 import { PostgresMarketCache, tables } from "@custodia/db";
 import { getParentName, makeTaskName } from "@custodia/ens";
 import { templateForIntent } from "@custodia/schema";
@@ -18,8 +18,10 @@ import { queueChannelReply } from "../channels.js";
 import {
   checkName,
   claimUrl,
+  describeIdentity,
   describeMyName,
   isAutoLabel,
+  isGreeting,
   parseNameCommand,
   releaseUrl,
 } from "../names.js";
@@ -79,6 +81,20 @@ async function runChat(
       type: "tool",
       payload: { type: "tool", name: "classify_intent", output: { intent } },
     });
+    // A greeting from a verified chat: welcome back + whether an ENS identity is minted.
+    if (isGreeting(lastUser?.content ?? "")) {
+      const welcome = await generateWelcome({ surface: "telegram", paired: { wallet: owner } });
+      await chain;
+      await completeRun(db, runId, {
+        proposalId: null,
+        proposalHash: null,
+        ensName: null,
+        taskId: null,
+        rationale: `${welcome}\n\n${await describeIdentity(db, owner)}`,
+        receipts: [],
+      });
+      return true;
+    }
     // Identity: "is alice available?", "claim alice", "my name" — handled without the model.
     const nameCommand = parseNameCommand(lastUser?.content ?? "");
     if (nameCommand) {

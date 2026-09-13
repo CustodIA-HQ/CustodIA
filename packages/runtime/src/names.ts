@@ -160,3 +160,26 @@ export const CLAIM_NUDGE =
 
 export const releaseUrl = (wallet: `0x${string}`, label: string): string =>
   `${publicAppOrigin()}/release?t=${createClaimToken(wallet, label)}`;
+
+/** "Your identity is rob.custodia.eth (on Sepolia)" — or the claim nudge. For greetings and verification. */
+export async function describeIdentity(db: AnyDb, wallet: `0x${string}`): Promise<string> {
+  const label = await getStoredUserLabel(db, wallet).catch(() => null);
+  if (isAutoLabel(label) || !label) return CLAIM_NUDGE;
+  const name = `${label}.${getParentName()}`;
+  let onchain: string | null = null;
+  try {
+    onchain = await lookupOwnerRecord(loadEnsConfig(), name);
+  } catch {
+    onchain = null;
+  }
+  const attached = onchain?.toLowerCase() === wallet.toLowerCase();
+  return attached
+    ? `Your identity is ${name}, minted on Sepolia ENS. Profile: ${publicAppOrigin()}/${encodeURIComponent(name)}`
+    : `Your identity ${name} is reserved and being attached on Sepolia ENS — I'll confirm with the transaction.`;
+}
+
+/** Plain greetings answered without the model: "hi", "hello", "hola" … */
+export const isGreeting = (message: string): boolean =>
+  /^(hi|hello|hey|hola|buenas|good (morning|afternoon|evening)|yo|sup)\b[!. ]*$/i.test(
+    message.trim(),
+  );
