@@ -60,11 +60,13 @@ A chat-native agentic finance runtime where the agent proposes, the human signs 
 
 ### Team
 
-| Name | Role | GitHub |
+| Name | Telegram | X |
 |---|---|---|
-| Robert Lopez | DevOps, identity (ENS), infra, runtime, submission | [@r0bops](https://github.com/r0bops) |
-| Angel | Agent runtime, channels (Telegram / WhatsApp), integration branch | — |
-| Psybre | Frontend, landing and cases lab | — |
+| Robert Lopez | [@n0there](https://t.me/n0there) | [@RobGT0](https://x.com/RobGT0) |
+| Esteban Brenes | [@EstebanBM03](https://t.me/EstebanBM03) | [@Psy_bre03](https://x.com/Psy_bre03) |
+| Angel Estrada | [@Angel2424prog](https://t.me/Angel2424prog) | [@ang40627](https://x.com/ang40627) |
+| Julián García Arias | [@juliangarc0](https://t.me/juliangarc0) | [@G16929497](https://x.com/G16929497) |
+| Juan David Correa | [@cryptozyzz_web3](https://t.me/cryptozyzz_web3) | [@cryptozyzz_eth](https://x.com/cryptozyzz_eth) |
 
 Workstream ownership and the day-one interface contracts are in [`TEAM.md`](TEAM.md).
 
