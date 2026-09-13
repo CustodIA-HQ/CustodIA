@@ -142,6 +142,9 @@ importers:
       '@custodia/schema':
         specifier: workspace:*
         version: link:../../packages/schema
+      '@custodia/vault':
+        specifier: workspace:*
+        version: link:../../packages/vault
       dotenv:
         specifier: ^17.0.0
         version: 17.4.2
@@ -213,6 +216,9 @@ importers:
       '@custodia/schema':
         specifier: workspace:*
         version: link:../schema
+      '@custodia/vault':
+        specifier: workspace:*
+        version: link:../vault
       '@hiero-ledger/sdk':
         specifier: 2.87.0
         version: 2.87.0(bn.js@5.2.3)(bufferutil@4.1.0)(supports-color@8.1.1)(utf-8-validate@5.0.10)
@@ -323,9 +329,18 @@ importers:
       '@custodia/ens':
         specifier: workspace:*
         version: link:../ens
+      '@custodia/graph':
+        specifier: workspace:*
+        version: link:../graph
+      '@custodia/policy':
+        specifier: workspace:*
+        version: link:../policy
       '@custodia/schema':
         specifier: workspace:*
         version: link:../schema
+      '@custodia/vault':
+        specifier: workspace:*
+        version: link:../vault
       drizzle-orm:
         specifier: ^0.44.0
         version: 0.44.7(@electric-sql/pglite@0.5.8)(@neondatabase/serverless@1.1.0)
@@ -341,6 +356,15 @@ importers:
       zod:
         specifier: 'catalog:'
         version: 4.5.4
+
+  packages/vault:
+    dependencies:
+      '@custodia/schema':
+        specifier: workspace:*
+        version: link:../schema
+      viem:
+        specifier: 'catalog:'
+        version: 2.56.3(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.5.4)
 
   scripts:
     dependencies:
@@ -365,6 +389,9 @@ importers:
       '@custodia/schema':
         specifier: workspace:*
         version: link:../packages/schema
+      '@custodia/vault':
+        specifier: workspace:*
+        version: link:../packages/vault
       '@hiero-ledger/sdk':
         specifier: ^2.87.0
         version: 2.87.0(bn.js@5.2.3)(bufferutil@4.1.0)(supports-color@8.1.1)(utf-8-validate@5.0.10)

@@ -20,6 +20,7 @@
     "@custodia/registry": "workspace:*",
     "@custodia/runtime": "workspace:*",
     "@custodia/schema": "workspace:*",
+    "@custodia/vault": "workspace:*",
     "dotenv": "^17.0.0",
     "drizzle-orm": "^0.44.7",
     "next": "^15.3.0",

@@ -5,7 +5,8 @@ import { ownerNameFromTaskEns, taskDirectoryPath } from "@custodia/ens/paths";
 import type { Mandate, PolicyDecision, UISpec } from "@custodia/schema";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { type ComponentProps, useCallback, useEffect, useRef, useState } from "react";
+import { VaultPanel } from "./vault-panel";
 
 type TaskPayload = {
   task: { id: string; ensName: string; status: string; template: string | null };
@@ -17,6 +18,10 @@ type TaskPayload = {
   } | null;
   receipts: Array<{ id: number; kind: string; txId: string; payload: unknown }>;
   notice: string;
+  vault: ComponentProps<typeof VaultPanel>["vault"];
+  actions: ComponentProps<typeof VaultPanel>["actions"];
+  signers: { execution: string | null; policy: string | null };
+  mandateHash: string | null;
 };
 
 /** Short, linked receipt id: Etherscan for Sepolia txs, HashScan for Hedera, plain for simulated. */
@@ -61,6 +66,7 @@ export default function TaskReviewPage() {
   const pendingRequest = useRef<string | null>(null);
   const [lastDecision, setLastDecision] = useState<PolicyDecision | null>(null);
 
+  const [priceUsd, setPriceUsd] = useState<number | null>(null);
   const load = useCallback(async () => {
     const response = await fetch(`/api/tasks/${id}`);
     const payload = (await response.json()) as TaskPayload & { error?: string };
@@ -70,6 +76,13 @@ export default function TaskReviewPage() {
     }
     setData(payload);
     setError(null);
+    // Live ETH price sizes the vault's on-chain limits at deployment.
+    fetch("/api/market")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((m: { market?: { priceUsd?: number } } | null) => {
+        if (typeof m?.market?.priceUsd === "number") setPriceUsd(m.market.priceUsd);
+      })
+      .catch(() => undefined);
   }, [id]);
 
   useEffect(() => {
@@ -255,6 +268,18 @@ export default function TaskReviewPage() {
           </p>
         </section>
       )}
+
+      <VaultPanel
+        actions={data.actions ?? []}
+        mandate={data.mandate}
+        mandateHash={data.mandateHash ?? null}
+        onChanged={load}
+        priceUsd={priceUsd}
+        signers={data.signers ?? { execution: null, policy: null }}
+        taskId={data.task.id}
+        taskStatus={data.task.status}
+        vault={data.vault ?? null}
+      />
 
       <section className="guard-page__details">
         <p className="guard-card__eyebrow">Autonomy</p>

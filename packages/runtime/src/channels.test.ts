@@ -1,4 +1,5 @@
 import { createTestDb, tables } from "@custodia/db";
+import { wantsTextOnly } from "@custodia/schema";
 import { eq } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, expect, it, vi } from "vitest";
 import {
@@ -10,7 +11,6 @@ import {
   sendWhatsAppMessage,
   summarizeRunEvents,
 } from "./channels.js";
-import { wantsTextOnly } from "@custodia/schema";
 import { notifyHandler } from "./handlers/notify.js";
 import { leaseJob } from "./jobs.js";
 import { HandlerRegistry, tick } from "./registry.js";

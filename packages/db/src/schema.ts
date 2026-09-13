@@ -28,7 +28,37 @@ export const tasks = pgTable("tasks", {
   status: text("status").notNull().default("draft"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  // TaskVault the owner deployed for this task (Sepolia). Null = simulation only.
+  vault: text("vault"),
+  vaultMandateHash: text("vault_mandate_hash"),
 });
+
+/**
+ * One row per real execution attempt: previewed → approved → submitted →
+ * confirmed | reverted, or refused before anything was sent. Nonce and tx
+ * hash are persisted before any wait so a restarted worker never resubmits.
+ */
+export const actions = pgTable(
+  "actions",
+  {
+    id: text("id").primaryKey(), // uuid
+    taskId: text("task_id").notNull(),
+    runId: text("run_id"), // the chat run that asked, for the reply channel
+    vault: text("vault").notNull(),
+    tokenIn: text("token_in").notNull(),
+    tokenOut: text("token_out").notNull(),
+    amountIn: text("amount_in").notNull(), // raw units, as string
+    minOut: text("min_out"),
+    nonce: integer("nonce"),
+    status: text("status").notNull().default("previewed"),
+    reason: text("reason"),
+    txHash: text("tx_hash"),
+    amountOut: text("amount_out"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("actions_task_id_idx").on(t.taskId)],
+);
 
 export const mandates = pgTable(
   "mandates",

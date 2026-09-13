@@ -2,11 +2,27 @@ import "../../../env";
 
 import { createDb, tables } from "@custodia/db";
 import { loadLatestMandate, loadLatestProposal, loadTask } from "@custodia/runtime";
-import { eq } from "drizzle-orm";
+import { type Mandate, mandateDigest } from "@custodia/schema";
+import { readVault } from "@custodia/vault";
+import { desc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { createPublicClient, http } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { sepolia } from "viem/chains";
 import { sessionFrom } from "../../session";
 
 export const dynamic = "force-dynamic";
+
+/** Public addresses of the two execution-side keys; the vault is deployed with them. Never the keys. */
+const signerAddresses = () => {
+  const addr = (name: string) => {
+    const key = process.env[name]?.trim();
+    return key && /^0x[0-9a-fA-F]{64}$/.test(key)
+      ? privateKeyToAccount(key as `0x${string}`).address
+      : null;
+  };
+  return { execution: addr("EXECUTION_PRIVATE_KEY"), policy: addr("POLICY_SIGNER_PRIVATE_KEY") };
+};
 
 export async function GET(request: Request, ctx: { params: Promise<{ id: string }> }) {
   const session = sessionFrom(request);
@@ -20,13 +36,54 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
   const mandateRow = await loadLatestMandate(db as never, id);
   const proposal = await loadLatestProposal(db as never, id);
   const receipts = await db.select().from(tables.receipts).where(eq(tables.receipts.taskId, id));
+  const actions = await db
+    .select()
+    .from(tables.actions)
+    .where(eq(tables.actions.taskId, id))
+    .orderBy(desc(tables.actions.createdAt))
+    .limit(20);
+  // Live vault state when one is recorded; a read failure must not hide the task.
+  let vault: Awaited<ReturnType<typeof readVault>> | null = null;
+  if (task.vault) {
+    try {
+      const client = createPublicClient({
+        chain: sepolia,
+        transport: http(process.env.SEPOLIA_RPC_URL),
+      });
+      vault = await readVault(client, task.vault as `0x${string}`);
+    } catch (error) {
+      console.error(`[task] vault read failed: ${error instanceof Error ? error.message : error}`);
+    }
+  }
   return NextResponse.json({
     task: {
       id: task.id,
       ensName: task.ensName,
       status: task.status,
       template: task.template,
+      vault: task.vault,
     },
+    vault: vault
+      ? {
+          ...vault,
+          weth: vault.weth.toString(),
+          usdc: vault.usdc.toString(),
+          caps: {
+            weth: {
+              maxTrade: vault.caps.weth.maxTrade.toString(),
+              maxCumulative: vault.caps.weth.maxCumulative.toString(),
+            },
+            usdc: {
+              maxTrade: vault.caps.usdc.maxTrade.toString(),
+              maxCumulative: vault.caps.usdc.maxCumulative.toString(),
+            },
+          },
+          spent: { weth: vault.spent.weth.toString(), usdc: vault.spent.usdc.toString() },
+        }
+      : null,
+    actions,
+    signers: signerAddresses(),
+    mandateHash: mandateRow ? mandateDigest(mandateRow.typedData as Mandate) : null,
     mandate: mandateRow?.typedData ?? null,
     proposal: proposal ? { id: proposal.id, hash: proposal.hash, body: proposal.body } : null,
     receipts,

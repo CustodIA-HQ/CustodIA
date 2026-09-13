@@ -1,5 +1,5 @@
 {
-  "name": "@custodia/runtime",
+  "name": "@custodia/vault",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -17,17 +17,11 @@
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "abi:sync": "node scripts/sync-abi.mjs"
   },
   "dependencies": {
-    "@custodia/agent": "workspace:*",
-    "@custodia/db": "workspace:*",
-    "@custodia/ens": "workspace:*",
-    "@custodia/graph": "workspace:*",
-    "@custodia/policy": "workspace:*",
     "@custodia/schema": "workspace:*",
-    "@custodia/vault": "workspace:*",
-    "drizzle-orm": "^0.44.0",
     "viem": "catalog:"
   }
 }

@@ -4,6 +4,13 @@ import { PostgresMarketCache, tables } from "@custodia/db";
 import { getParentName, makeTaskName } from "@custodia/ens";
 import { templateForIntent } from "@custodia/schema";
 import { eq } from "drizzle-orm";
+import {
+  findActiveTask,
+  findExecutableTask,
+  fundVaultUrl,
+  parseOrder,
+  queueOrder,
+} from "../actions.js";
 import { queueChannelReply } from "../channels.js";
 import { storeProposal } from "../proposals.js";
 import type { JobHandler } from "../registry.js";
@@ -61,6 +68,44 @@ async function runChat(
       type: "tool",
       payload: { type: "tool", name: "classify_intent", output: { intent } },
     });
+    // A plain order on a funded task goes to the vault executor, not the model.
+    if (intent === "execute") {
+      const order = parseOrder(lastUser?.content ?? "");
+      const task = order ? await findExecutableTask(db, owner) : null;
+      if (order && task?.vault) {
+        const actionId = await queueOrder(db, { taskId: task.id, vault: task.vault, runId, order });
+        record({
+          stage,
+          type: "tool",
+          payload: { type: "tool", name: "queue_order", output: { actionId } },
+        });
+        await chain;
+        await completeRun(db, runId, {
+          proposalId: null,
+          proposalHash: null,
+          ensName: task.ensName,
+          taskId: null,
+          rationale: `Checking your order against the boundary and submitting it: ${order.sell} → ${order.buy}, ${order.amount} ${order.exactOutput ? order.buy : order.sell}. You'll get the result with the transaction link.`,
+          receipts: [],
+        });
+        return true;
+      }
+      if (order) {
+        const active = await findActiveTask(db, owner);
+        await chain;
+        await completeRun(db, runId, {
+          proposalId: null,
+          proposalHash: null,
+          ensName: active?.ensName ?? null,
+          taskId: null,
+          rationale: active
+            ? `To execute for real, fund a vault for ${active.ensName} first: ${fundVaultUrl(active.id)}`
+            : 'There is no active task yet. Ask for a guard first (for example "protect my ETH if it drops 15%"), sign it, then fund its vault.',
+          receipts: [],
+        });
+        return true;
+      }
+    }
     if (intent === "unsupported") {
       await chain;
       await completeRun(db, runId, {

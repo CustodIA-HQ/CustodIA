@@ -104,6 +104,40 @@ take DNS-encoded names while `setText` takes a namehash.
 `xyz.custodia.*` ENS record keys are ours. This project is **AP2-style**, not AP2-compliant —
 the device/trust-layer requirements of AP2 are out of scope for prototype v0, and no
 claim is made otherwise.
+## Real execution inside the boundary (TaskVault)
+
+After signing a mandate, the owner can deploy a **TaskVault** from the task page
+(`contracts/src/TaskVault.sol`, one transaction: deploy + install the mandate's limits)
+and fund it with Sepolia ETH. From then on an order in any chat —
+*"swap 0.01 ETH to USDC"*, *"buy 0.005 ETH"* — is executed for real:
+
+```
+chat order → policy engine (USD limits, live price) → Uniswap V3 quote
+  → policy signer approves that exact action (EIP-712, 2 min)
+  → execution signer calls vault.executeSwap → 2 confirmations
+  → chat: "Done: swapped 0.01 ETH → 27.6 USDC. Vault now … Tx: https://sepolia.etherscan.io/tx/…"
+```
+
+The vault enforces every limit itself — allowed assets (ETH/USDC), per-trade and
+cumulative caps in raw units, cooldown, expiry, nonce, the single allow-listed router,
+and output landing in the vault — so no server key can move funds outside what was
+signed. Only the owner can withdraw or revoke. Refusals (off-chain or on-chain) are
+reported to the chat with the reason; nothing moves.
+
+| Piece | Where |
+|---|---|
+| Contract + Foundry tests (16 unit, 1 Sepolia fork) | `contracts/` — `forge test`, `forge test --fork-url $SEPOLIA_RPC_URL` |
+| ABI, deploy args, quotes, policy signature | `packages/vault` (`pnpm --filter @custodia/vault abi:sync` after `forge build`) |
+| Executor (previewed → approved → submitted → confirmed, crash-safe) | `packages/runtime/src/handlers/execute.ts` |
+| Chat order parser and routing | `packages/runtime/src/actions.ts`, `handlers/chat.ts` |
+| Deploy / deposit / withdraw / revoke UI | `apps/web/app/task/[id]/vault-panel.tsx` |
+| Definition of done | `pnpm verify:vault` — deploys, funds, executes one order, refuses one over the cap, revokes |
+
+Keys: `EXECUTION_PRIVATE_KEY` (sends `executeSwap`, needs gas, cannot withdraw) and
+`POLICY_SIGNER_PRIVATE_KEY` (approves single actions, never transacts) live in the
+worker env only. Sepolia only; the WETH/USDC 0.05 % pool's test liquidity prices ETH
+far from mainnet, so USD limits are sized at deployment from the live reference price.
+
 ## Paper trading (real data, simulated execution)
 
 On an active, signed task at `/task/<id>`, choose ETH→USDC or USDC→ETH and a

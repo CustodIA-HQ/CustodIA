@@ -5,6 +5,7 @@ import {
   ensAttachHandler,
   ensPublishHandler,
   ensVerifySubdomainHandler,
+  executeHandler,
   HandlerRegistry,
   monitorHandler,
   notifyHandler,
@@ -24,6 +25,7 @@ const registry = new HandlerRegistry()
   .register("ens.attach", ensAttachHandler)
   .register("ens.publish", ensPublishHandler)
   .register("ens.verify.subdomain", ensVerifySubdomainHandler)
+  .register("execute", executeHandler)
   .register("monitor.active", monitorHandler)
   .register("notify.drain", notifyHandler);
 
