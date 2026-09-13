@@ -8,6 +8,7 @@ import {
 } from "@custodia/ens";
 import { type Mandate, type MarketContext, mandateDigest, type UISpec } from "@custodia/schema";
 import { and, eq } from "drizzle-orm";
+import { queueChannelMessageForRun } from "../channels.js";
 import type { JobHandler } from "../registry.js";
 
 const SEPOLIA = "eip155:11155111";
@@ -89,4 +90,10 @@ export const ensPublishHandler: JobHandler = async ({ db, job }) => {
     target: task.userWallet,
     payload: { type: "task.active", taskId, ensName: created.name },
   });
+  // The chat that asked for the guard gets the ENS-named page: chart, limits and status.
+  await queueChannelMessageForRun(
+    db,
+    proposal.runId,
+    `${created.name} is live on ENS. Chart and status: ${directoryUrl(taskDirectoryPath(ownerName, taskId, task.template))}`,
+  );
 };

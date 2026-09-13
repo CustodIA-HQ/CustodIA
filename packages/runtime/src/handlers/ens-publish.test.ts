@@ -12,6 +12,7 @@ vi.mock("@custodia/ens", async (orig) => ({
   loadEnsConfig: mocks.loadEnsConfig,
 }));
 
+import { createRun } from "../runs.js";
 import { ensPublishHandler } from "./ens-publish.js";
 
 let ctx: Awaited<ReturnType<typeof createTestDb>>;
@@ -142,4 +143,41 @@ it("leaves the task awaiting authorization and throws when publication fails", a
   ).rejects.toThrow("rpc down");
   const [task] = await ctx.db.select().from(tables.tasks).where(eq(tables.tasks.id, "ef01ef01"));
   expect(task?.status).toBe("awaiting_authorization");
+});
+
+it("sends the chat that asked for the guard its ENS-named page once the task is live", async () => {
+  mocks.createTask.mockResolvedValue({
+    name: "beef0001.alice.custodia.eth",
+    recordsTxId: "0xcc",
+    txId: "0xdd",
+  });
+  vi.stubEnv("APP_URL", "https://app.test");
+  const { runId } = await createRun(ctx.db, {
+    conversationId: "whatsapp:34600111222",
+    ownerWallet: owner,
+    kind: "chat",
+    clientRequestId: "whatsapp:wamid.9",
+    input: { messages: [], agent, reply: { channel: "whatsapp", chatId: "34600111222" } },
+  });
+  const ids = await seed("beef0001");
+  await ctx.db
+    .update(tables.proposals)
+    .set({ runId })
+    .where(eq(tables.proposals.id, ids.proposalId));
+  await ensPublishHandler({
+    db: ctx.db,
+    job: job({ taskId: "beef0001", ...ids }),
+    heartbeat: async () => {},
+  });
+  const [row] = await ctx.db
+    .select()
+    .from(tables.outbox)
+    .where(eq(tables.outbox.target, "34600111222"));
+  expect(row).toMatchObject({
+    channel: "whatsapp",
+    payload: {
+      text: "beef0001.alice.custodia.eth is live on ENS. Chart and status: https://app.test/alice.custodia.eth/beef0001/portfolio-guard",
+    },
+  });
+  vi.unstubAllEnvs();
 });

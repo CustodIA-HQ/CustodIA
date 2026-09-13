@@ -126,6 +126,17 @@ export async function queueChannelReply(db: AnyDb, runId: string): Promise<void>
   await queueChannelMessage(db, target, channelReplyText(run, publicAppOrigin(), summary));
 }
 
+/** Queue text for the channel a run came from; no-op for web runs. */
+export async function queueChannelMessageForRun(
+  db: AnyDb,
+  runId: string,
+  text: string,
+): Promise<void> {
+  const run = await loadRun(db, runId);
+  const target = run ? replyTarget(run.input) : null;
+  if (target) await queueChannelMessage(db, target, text);
+}
+
 /** Queue text for a chat channel; the worker's notify.drain delivers it. */
 export async function queueChannelMessage(
   db: AnyDb,
