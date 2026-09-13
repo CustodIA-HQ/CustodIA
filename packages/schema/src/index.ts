@@ -298,8 +298,8 @@ export const ReceiptSchema = z.object({
 export type Receipt = z.infer<typeof ReceiptSchema>;
 
 export * from "./capabilities.js";
+export * from "./chat-text.js";
 // Task lifecycle v2 (seven states, actor-gated transitions) — see lifecycle.ts
 export * from "./lifecycle.js";
-
 // EIP-712 mandate domain/types + constraintsHash (see mandate712.ts)
 export * from "./mandate712.js";

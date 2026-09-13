@@ -4,6 +4,7 @@ import { timingSafeEqual } from "node:crypto";
 import { createDb } from "@custodia/db";
 import { publicAppOrigin } from "@custodia/ens/paths";
 import { bindChannel, createRun, enqueueJob, findChannelBinding } from "@custodia/runtime";
+import { welcomePaired, welcomeWithVerify } from "@custodia/schema";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { connectUrl, readPairingCode } from "../channels/pairing";
@@ -68,30 +69,19 @@ export async function POST(request: Request) {
 
   try {
     const verify = () =>
-      reply(
-        chatId,
-        `Verify your wallet to start. Open this link and sign with your wallet (valid 15 minutes): ${connectUrl("telegram", externalId, publicAppOrigin())}`,
-      );
+      reply(chatId, welcomeWithVerify(connectUrl("telegram", externalId, publicAppOrigin())));
 
     // A /start code from a signed web session still pairs directly.
     const start = text.match(/^\/start(?:\s+(\S+))?$/);
     const startWallet = start?.[1] ? readPairingCode("telegram", start[1]) : null;
     if (startWallet) {
       await bindChannel(getDb(), { channel: "telegram", externalId, ownerWallet: startWallet });
-      return reply(
-        chatId,
-        `Paired with ${startWallet}. Ask about ETH or set a protection boundary.`,
-      );
+      return reply(chatId, welcomePaired(startWallet));
     }
 
     const ownerWallet = await findChannelBinding(getDb(), "telegram", externalId);
     if (!ownerWallet) return verify();
-    if (start) {
-      return reply(
-        chatId,
-        `Paired with ${ownerWallet}. Ask about ETH or set a protection boundary.`,
-      );
-    }
+    if (start) return reply(chatId, welcomePaired(ownerWallet));
     if (text.length > MAX_MESSAGE_LENGTH) {
       return reply(chatId, `Messages are limited to ${MAX_MESSAGE_LENGTH} characters.`);
     }

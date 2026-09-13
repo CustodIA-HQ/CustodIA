@@ -9,8 +9,8 @@ import {
   readWalletViewToken,
   sendWhatsAppMessage,
   summarizeRunEvents,
-  wantsTextOnly,
 } from "./channels.js";
+import { wantsTextOnly } from "@custodia/schema";
 import { notifyHandler } from "./handlers/notify.js";
 import { leaseJob } from "./jobs.js";
 import { HandlerRegistry, tick } from "./registry.js";

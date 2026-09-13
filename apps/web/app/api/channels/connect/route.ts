@@ -2,6 +2,7 @@ import "../../../env";
 
 import { createDb } from "@custodia/db";
 import { bindChannel, queueChannelMessage } from "@custodia/runtime";
+import { welcomePaired } from "@custodia/schema";
 import { NextResponse } from "next/server";
 import { verifyMessage } from "viem";
 import { z } from "zod";
@@ -75,7 +76,7 @@ export async function POST(request: Request) {
     await queueChannelMessage(
       getDb(),
       { channel: claim.channel, chatId: claim.externalId },
-      `Wallet verified: ${address}. Ask about ETH or set a protection boundary.`,
+      welcomePaired(address),
     );
   } catch (error) {
     console.error(`[channels/connect] ${error instanceof Error ? error.name : "Error"}`);

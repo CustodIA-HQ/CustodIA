@@ -83,7 +83,7 @@ it("pairs the Telegram user with the wallet in a valid start code", async () => 
     {},
     { channel: "telegram", externalId: "777", ownerWallet: wallet },
   );
-  expect((await response.json()).text).toMatch(/^Paired with 0x2222/);
+  expect((await response.json()).text).toMatch(/verified as 0x2222/);
 });
 
 it("refuses a tampered or expired pairing code", () => {

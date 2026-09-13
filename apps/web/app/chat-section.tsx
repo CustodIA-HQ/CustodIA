@@ -5,10 +5,13 @@ import {
   type Address,
   type Constraint,
   constraintsHash,
+  holdingsLine,
   MANDATE_DOMAIN,
   MANDATE_TYPES,
   type MarketContext,
   type UISpec,
+  WELCOME,
+  wantsTextOnly,
 } from "@custodia/schema";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { getAddress } from "viem";
@@ -76,8 +79,7 @@ const starterPrompts = [
 const welcomeMessage: Message = {
   id: "welcome",
   role: "assistant",
-  content:
-    "Sign this conversation, then ask what ETH is doing, show holdings, or set a protection boundary. Market questions stay in chat. A signed guard is the only thing that becomes an ENS task.",
+  content: `${WELCOME}\n\nSign this conversation with your wallet to start.`,
 };
 
 const getEthereum = (): EthereumProvider => {
@@ -352,7 +354,19 @@ export default function ChatSection({ fullPage = false }: { fullPage?: boolean }
     if (run.portfolio) {
       const snapshot = snapshotFromPortfolio(run.portfolio, walletAddress, run.market);
       const nextMeta = snapshot.meta as WalletSnapshot;
+      const portfolio = run.portfolio;
+      const priceUsd = run.market?.priceUsd ?? null;
       setMessages((current) => {
+        // Same rule as the chat channels: "in text" gets the one-line summary, not the card.
+        const lastUser = [...current].reverse().find((message) => message.role === "user");
+        if (wantsTextOnly(lastUser?.content ?? "")) {
+          const id = `holdings-${runId}`;
+          if (current.some((message) => message.id === id)) return current;
+          return [
+            ...current,
+            { id, role: "assistant", content: holdingsLine(portfolio, priceUsd), kind: "text" },
+          ];
+        }
         const existing = current.findIndex((message) => message.kind === "snapshot");
         if (existing >= 0) {
           const prev = current[existing]?.meta as WalletSnapshot | undefined;

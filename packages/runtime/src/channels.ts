@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { tables } from "@custodia/db";
 import { publicAppOrigin } from "@custodia/ens/paths";
-import { NotImplementedError } from "@custodia/schema";
+import { holdingsLine, NotImplementedError, wantsTextOnly } from "@custodia/schema";
 import { and, eq } from "drizzle-orm";
 import { enqueueJob } from "./jobs.js";
 import { type AnyDb, listEvents, loadRun } from "./runs.js";
@@ -111,15 +111,6 @@ export const readWalletViewToken = (token: string, now = Date.now()): string | n
   }
 };
 
-/** "in text", "as text", "sin gráfico" … — the user asked for words, not the graph page. */
-export const wantsTextOnly = (message: string): boolean =>
-  /\b(in|as|plain|only|solo|en)\s+text[o]?\b|\b(no|without|sin)\s+(?:an?\s+|the\s+|una?\s+|el\s+)?(graph|chart|gr[aá]fic[ao]s?)/i.test(
-    message,
-  );
-
-const fmt = (value: number, digits: number) =>
-  value.toLocaleString("en-US", { maximumFractionDigits: digits });
-
 /**
  * Holdings and research runs answer through streamed text and a wallet card,
  * not `output.rationale`; a chat only gets text, so rebuild it from the events.
@@ -153,17 +144,7 @@ export const summarizeRunEvents = (
       if (Array.isArray(payload.output.hourly)) hourly = payload.output.hourly;
     }
   }
-  let holdings: string | null = null;
-  if (portfolio) {
-    const eth = Number(portfolio.eth ?? 0);
-    const usdc = Number(portfolio.usdc ?? 0);
-    const weth = Number(portfolio.weth ?? 0);
-    const ethPart =
-      priceUsd !== null
-        ? `${fmt(eth, 4)} ETH (~$${fmt(eth * priceUsd, 0)} at $${fmt(priceUsd, 0)})`
-        : `${fmt(eth, 4)} ETH`;
-    holdings = `Wallet on ${portfolio.chain ?? "Sepolia"}: ${ethPart}, ${fmt(usdc, 2)} USDC, ${fmt(weth, 4)} WETH. Testnet balances, no real value.`;
-  }
+  const holdings = portfolio ? holdingsLine(portfolio, priceUsd) : null;
   const snapshot: WalletView | null = portfolio
     ? {
         network: portfolio.chain ?? "Ethereum Sepolia testnet",

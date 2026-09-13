@@ -10,6 +10,7 @@ import {
   findChannelBinding,
   queueChannelMessage,
 } from "@custodia/runtime";
+import { welcomePaired, welcomeWithVerify } from "@custodia/schema";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { connectUrl, readPairingCode } from "../channels/pairing";
@@ -103,7 +104,7 @@ export async function POST(request: Request) {
       if (message.type !== "text" || !message.text) continue;
       const target = { channel: "whatsapp" as const, chatId: message.from };
       const verifyText = () =>
-        `Verify your wallet to start. Open this link and sign with your wallet (valid 15 minutes): ${connectUrl("whatsapp", message.from, publicAppOrigin())}`;
+        welcomeWithVerify(connectUrl("whatsapp", message.from, publicAppOrigin()));
       const text = message.text.body.trim();
 
       const connect = text.match(/^connect\s+(\S+)$/i);
@@ -122,11 +123,7 @@ export async function POST(request: Request) {
           externalId: message.from,
           ownerWallet: wallet,
         });
-        await queueChannelMessage(
-          getDb(),
-          target,
-          `Paired with ${wallet}. Ask about ETH or set a protection boundary.`,
-        );
+        await queueChannelMessage(getDb(), target, welcomePaired(wallet));
         continue;
       }
 
