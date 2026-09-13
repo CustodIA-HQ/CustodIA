@@ -118,3 +118,30 @@ Within a minute of step 7 the agent may already message you: *"Agent proposal �
 - Don't deploy the vault, mint a name or ask for a new guard live — 40 s to 1 min of waiting each.
 - Don't trade above 0.02 ETH except for the refusal line.
 - Don't type "buy" for the refusal — "sell 5 ETH" gives the clean per-trade-limit message.
+
+---
+
+## Voice-over (record separately, ~80 s, ~190 words)
+
+Read at a calm pace. Each block starts at the timestamp; `[…]` are breaths, not words.
+
+**0:00**
+This is CustodIA. My agent lives in WhatsApp — and it knows who I am on-chain. That's my ENS name, minted on Sepolia. Yesterday I signed a boundary under it: what the agent may trade, how much, and until when. [pause] Watch what happens when I ask it to act.
+
+**0:10**
+"Sell a little ETH." No wallet pop-up, no signature. I already signed the boundary it works inside. That swap is heading to the chain right now.
+
+**0:20**
+Every answer is grounded in live data: The Graph for prices, the chain for balances. And the graph lives under my name.
+
+**0:30**
+Every task is a subname of it. ENS isn't decoration here — it's the namespace the agent works in. [pause] And here's the proof: owner, the agent's scoped key, the transaction that attached it. Records on Sepolia, not rows in our database.
+
+**0:48**
+Done. A real swap, on a real chain. The funds sit in a vault only I can withdraw from — and the contract itself checked the asset, the size, the cooldown, the expiry, and that the output came back.
+
+**0:62**
+Now the same request, with a bigger number. [pause] Refused. Not "won't" — can't. The policy said no, and if it hadn't, the contract would have.
+
+**0:74**
+Every action, allowed or refused, is on the record. One tap revokes the agent. The agent proposes. I sign the boundary. Policy enforces it. That's CustodIA.
