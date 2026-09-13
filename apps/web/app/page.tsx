@@ -1,16 +1,12 @@
 import Link from "next/link";
 import { ChannelButtons } from "./components/channel-buttons";
 import { ChatEntrySection } from "./components/chat-entry-section";
-import { HomeSampleProof } from "./components/home-sample-proof";
 import { HomeShell } from "./components/home-shell";
 import { SiteFooter, SiteHeader } from "./components/site-header";
 import { TickerBand } from "./components/ticker-band";
 import { UseCasesMarquee } from "./components/use-cases-marquee";
-import { demoMarket, demoSpec } from "./ux/samples";
 
 export default function Home() {
-  const proof = demoSpec("position_protection");
-
   return (
     <HomeShell>
       <main className="home" id="main">
@@ -42,11 +38,13 @@ export default function Home() {
           </div>
           <aside className="home-hero__visual" aria-label="CustodIA Logo">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/brand/falcon-eye/falcon-eye-reference.png" alt="CustodIA Eye Logo" style={{ width: '100%', maxWidth: '600px', margin: '0 auto', display: 'block' }} />
+            <img
+              src="/brand/falcon-eye/falcon-eye-reference.png"
+              alt="CustodIA Eye Logo"
+              style={{ width: "100%", maxWidth: "600px", margin: "0 auto", display: "block" }}
+            />
           </aside>
         </section>
-
-        <HomeSampleProof spec={proof} market={demoMarket} />
 
         <TickerBand direction="ltr" />
 
