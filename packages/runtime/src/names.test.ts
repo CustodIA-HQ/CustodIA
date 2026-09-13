@@ -64,3 +64,10 @@ it("a generated wallet-xxxxxxxx label can be replaced by a real claim", async ()
   );
   await ctx.close();
 });
+
+it("recognises disconnect commands only", () => {
+  for (const d of ["disconnect", "Unpair", "log out", "reset this chat"])
+    expect(isDisconnect(d)).toBe(true);
+  for (const n of ["disconnect the vault", "reset my password"])
+    expect(isDisconnect(n)).toBe(false);
+});

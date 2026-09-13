@@ -185,3 +185,9 @@ export const isGreeting = (message: string): boolean =>
   /^(hi|hello|hey|hola|buenas|good (morning|afternoon|evening)|yo|sup)\b[!. ]*$/i.test(
     message.trim(),
   );
+
+/** "disconnect", "unpair", "log out", "reset this chat" — forget the pairing so the next message asks to verify again. */
+export const isDisconnect = (message: string): boolean =>
+  /^(disconnect|unpair|log ?out|sign ?out|reset( this)?( chat)?|desconectar|cerrar sesi[oó]n)\b[!. ]*$/i.test(
+    message.trim(),
+  );

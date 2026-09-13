@@ -3,7 +3,7 @@ import { classifyIntent, generateWelcome, runAgent } from "@custodia/agent";
 import { PostgresMarketCache, tables } from "@custodia/db";
 import { getParentName, makeTaskName } from "@custodia/ens";
 import { templateForIntent } from "@custodia/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import {
   findActiveTask,
   findExecutableTask,
@@ -81,6 +81,29 @@ async function runChat(
       type: "tool",
       payload: { type: "tool", name: "classify_intent", output: { intent } },
     });
+    // "disconnect": forget this chat's pairing; the next message starts over with the wallet signature.
+    const replyTarget = (input as { reply?: { channel?: string; chatId?: string } }).reply;
+    if (isDisconnect(lastUser?.content ?? "") && replyTarget?.channel && replyTarget.chatId) {
+      await db
+        .delete(tables.channelBindings)
+        .where(
+          and(
+            eq(tables.channelBindings.channel, replyTarget.channel),
+            eq(tables.channelBindings.externalId, replyTarget.chatId),
+          ),
+        );
+      await chain;
+      await completeRun(db, runId, {
+        proposalId: null,
+        proposalHash: null,
+        ensName: null,
+        taskId: null,
+        rationale:
+          "Disconnected. This chat is no longer linked to your wallet. Send any message to verify again.",
+        receipts: [],
+      });
+      return true;
+    }
     // A greeting from a verified chat: welcome back + whether an ENS identity is minted.
     if (isGreeting(lastUser?.content ?? "")) {
       const welcome = await generateWelcome({ surface: "telegram", paired: { wallet: owner } });
